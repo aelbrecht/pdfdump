@@ -137,40 +137,71 @@ func (t *TokenScanner) scan() bool {
 	return true
 }
 
-func parseDict(scanner *TokenScanner) {
+func parseDict(scanner *TokenScanner) bool {
+	if !scanner.Pop("<<") {
+		return false
+	}
 	fmt.Println("[dict]")
 	for true {
 		if scanner.Pop(">>") {
 			fmt.Println("[end-dict]")
-			return
+			return true
 		} else {
 			parseAny(scanner)
 		}
 	}
+	return false
 }
 
-func parseStream(scanner *TokenScanner) {
+func parseStream(scanner *TokenScanner) bool {
+	if !strings.HasPrefix(scanner.Peek(), "stream") {
+		return false
+	}
 	buffer := ""
 	for true {
 		token := scanner.Next()
 		buffer += token
 		if token == "endstream" {
 			fmt.Printf("[stream] %d characters\n", len(buffer))
-			return
+			return true
 		}
 	}
+	return false
 }
 
-func parseString(scanner *TokenScanner) {
+func parseNumber(scanner *TokenScanner) bool {
+	token := scanner.Peek()
+	if strings.Contains(token, ".") {
+		v, err := strconv.ParseFloat(token, 64)
+		if err != nil {
+			return false
+		}
+		fmt.Printf("[float] %f\n", v)
+	} else {
+		v, err := strconv.ParseInt(token, 10, 64)
+		if err != nil {
+			return false
+		}
+		fmt.Printf("[int] %d\n", v)
+	}
+	scanner.Next()
+	return true
+}
+
+func parseString(scanner *TokenScanner) bool {
+	if scanner.Peek()[0] != '(' {
+		return false
+	}
 	buffer := ""
 	for true {
 		token := scanner.Next()
 		buffer += token
 		if token == ")" || token[len(token)-1] == ')' {
 			fmt.Printf("[string] %s\n", buffer)
-			return
+			return true
 		}
 	}
+	return false
 }
 
 func exitUnknown(s string) {
@@ -178,29 +209,38 @@ func exitUnknown(s string) {
 	os.Exit(0)
 }
 
-func parseArray(scanner *TokenScanner) {
+func parseArray(scanner *TokenScanner) bool {
+	if !scanner.Pop("[") {
+		return false
+	}
 	fmt.Println("[array]")
 	for true {
 		if scanner.Pop("]") {
 			fmt.Println("[end-array]")
-			return
+			return true
 		} else {
 			parseAny(scanner)
 		}
 	}
+	return false
 }
 
-func parseBoolean(scanner *TokenScanner) {
+func parseBoolean(scanner *TokenScanner) bool {
 	if scanner.Pop("true") {
 		fmt.Println("[boolean] true")
+		return true
 	} else if scanner.Pop("false") {
 		fmt.Println("[boolean] false")
+		return true
 	} else {
-		log.Fatalln("invalid bool")
+		return false
 	}
 }
 
-func parseReference(scanner *TokenScanner) {
+func parseReference(scanner *TokenScanner) bool {
+	if scanner.PeekAhead(2) != "R" {
+		return false
+	}
 	objNum, err := strconv.Atoi(scanner.Next())
 	check(err)
 	genNum, err := strconv.Atoi(scanner.Next())
@@ -209,71 +249,59 @@ func parseReference(scanner *TokenScanner) {
 		log.Fatalln("failed to parse indirect ref")
 	}
 	fmt.Printf("[reference] %d %d\n", objNum, genNum)
+	return true
 }
 
-func parseType(scanner *TokenScanner) {
+func parseType(scanner *TokenScanner) bool {
+	if scanner.Peek()[0] != '/' {
+		return false
+	}
 	token := scanner.Next()
 	if token[0] != '/' {
 		log.Fatalln("invalid type start")
 	}
 	fmt.Printf("[type] %s\n", token)
+	return true
 }
 
 func parseAny(scanner *TokenScanner) {
-	if scanner.Pop("<<") {
-		parseDict(scanner)
+
+	if parseDict(scanner) {
 		return
 	}
 
-	if scanner.Pop("[") {
-		parseArray(scanner)
+	if parseArray(scanner) {
 		return
 	}
 
-	if strings.HasPrefix(scanner.Peek(), "stream") {
-		parseStream(scanner)
+	if parseStream(scanner) {
 		return
 	}
 
-	if scanner.Peek() == "false" || scanner.Peek() == "true" {
-		parseBoolean(scanner)
+	if parseBoolean(scanner) {
 		return
 	}
 
-	if scanner.PeekAhead(2) == "R" {
-		parseReference(scanner)
+	if parseReference(scanner) {
 		return
 	}
 
-	if scanner.Peek()[0] == '/' {
-		parseType(scanner)
+	if parseType(scanner) {
 		return
 	}
 
-	if scanner.Peek()[0] == '(' {
-		parseString(scanner)
+	if parseString(scanner) {
+		return
+	}
+
+	if parseNumber(scanner) {
 		return
 	}
 
 	token := scanner.Next()
-
-	if strings.Contains(token, ".") {
-		v, err := strconv.ParseFloat(token, 64)
-		if err != nil {
-			log.Fatalf("failed to parse float: %s\n", token)
-		}
-		fmt.Printf("[float] %f\n", v)
-		return
-	} else {
-		v, err := strconv.ParseInt(token, 10, 64)
-		if err != nil {
-			log.Printf("failed to parse int: %s\n", token)
-			scanner.Dump()
-			os.Exit(1)
-		}
-		fmt.Printf("[int] %d\n", v)
-		return
-	}
+	log.Printf("failed to parse: %s\n", token)
+	scanner.Dump()
+	os.Exit(1)
 }
 
 func parseObject(scanner *TokenScanner, o *pdf.Object) {
