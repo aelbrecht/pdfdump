@@ -1,4 +1,4 @@
-package scan
+package token
 
 import (
 	"bufio"
@@ -24,7 +24,7 @@ func splitCarriage(data []byte, atEOF bool) (advance int, token []byte, err erro
 	return 0, nil, nil
 }
 
-type TokenScanner struct {
+type Scanner struct {
 	scanner      *bufio.Scanner
 	tokens       []string
 	index        int
@@ -33,10 +33,10 @@ type TokenScanner struct {
 	end          bool
 }
 
-func NewTokenScanner(r io.Reader) *TokenScanner {
+func NewScanner(r io.Reader) *Scanner {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(splitCarriage)
-	t := &TokenScanner{
+	t := &Scanner{
 		scanner: scanner,
 	}
 	if !t.scan() {
@@ -45,11 +45,11 @@ func NewTokenScanner(r io.Reader) *TokenScanner {
 	return t
 }
 
-func (t *TokenScanner) HasToken() bool {
+func (t *Scanner) HasToken() bool {
 	return !t.end
 }
 
-func (t *TokenScanner) Dump() {
+func (t *Scanner) Dump() {
 	i := t.historyIndex
 	for true {
 		offset := 0
@@ -76,7 +76,7 @@ func (t *TokenScanner) Dump() {
 	}
 }
 
-func (t *TokenScanner) Next() string {
+func (t *Scanner) Next() string {
 	next := t.tokens[t.index]
 	t.index++
 	if t.index >= len(t.tokens) {
@@ -90,15 +90,15 @@ func (t *TokenScanner) Next() string {
 	return next
 }
 
-func (t *TokenScanner) HasSuffix(suffix string) bool {
+func (t *Scanner) HasSuffix(suffix string) bool {
 	return t.tokens[len(t.tokens)-1] == suffix
 }
 
-func (t *TokenScanner) HasPrefix(prefix string) bool {
+func (t *Scanner) HasPrefix(prefix string) bool {
 	return t.tokens[0] == prefix
 }
 
-func (t *TokenScanner) Pop(token string) bool {
+func (t *Scanner) Pop(token string) bool {
 	if t.Peek() == token {
 		t.Next()
 		return true
@@ -106,11 +106,11 @@ func (t *TokenScanner) Pop(token string) bool {
 	return false
 }
 
-func (t *TokenScanner) Peek() string {
+func (t *Scanner) Peek() string {
 	return strings.TrimSpace(t.tokens[t.index])
 }
 
-func (t *TokenScanner) PeekAhead(offset int) string {
+func (t *Scanner) PeekAhead(offset int) string {
 	if t.index+offset >= len(t.tokens) {
 		return ""
 	} else {
@@ -118,7 +118,7 @@ func (t *TokenScanner) PeekAhead(offset int) string {
 	}
 }
 
-func (t *TokenScanner) scan() bool {
+func (t *Scanner) scan() bool {
 	if !t.scanner.Scan() {
 		return false
 	}
