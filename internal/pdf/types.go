@@ -2,13 +2,19 @@ package pdf
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
 
+var HideIdentifiers = false
+var NoIndents = false
+var HideStreamLength = true
+var HideVariableData = false
+
 type PDF struct {
-	Version  string    `json:"version"`
-	Children []*Object `json:"children"`
+	Version string             `json:"version"`
+	Objects map[string]*Object `json:"objects"`
 }
 
 type ObjectIdentifier struct {
@@ -17,7 +23,7 @@ type ObjectIdentifier struct {
 }
 
 func (o *ObjectIdentifier) String() string {
-	return fmt.Sprintf("num -> %d, gen -> %d", o.ObjectNumber, o.ObjectGeneration)
+	return fmt.Sprintf("num:%d, gen:%d", o.ObjectNumber, o.ObjectGeneration)
 }
 
 func (o *ObjectIdentifier) Hash() string {
@@ -33,6 +39,9 @@ type Object struct {
 var indent = 0
 
 func padding() string {
+	if NoIndents {
+		return ""
+	}
 	output := ""
 	for i := 0; i < indent; i++ {
 		output += "\t"
@@ -47,7 +56,11 @@ func (o *Object) String() string {
 		items = append(items, padding()+child.String())
 	}
 	indent--
-	return fmt.Sprintf("Object[ %s, refs -> %d ]\n(\n%s\n)\n\n", o.Identifier.String(), len(o.References), strings.Join(items, "\n"))
+	identifier := fmt.Sprintf(" %s, refs:%d ", o.Identifier.String(), len(o.References))
+	if HideIdentifiers {
+		identifier = ""
+	}
+	return fmt.Sprintf("Object(%s) {\n%s\n}\n\n", identifier, strings.Join(items, "\n"))
 }
 
 func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
@@ -155,7 +168,11 @@ type ObjectReference struct {
 }
 
 func (o *ObjectReference) String() string {
-	return fmt.Sprintf("Object[ %s ]", o.Link.String())
+	if HideIdentifiers {
+		return fmt.Sprintf("Ref()")
+	} else {
+		return fmt.Sprintf("Ref( %s )", o.Link.String())
+	}
 }
 
 func NewReference(ref ObjectIdentifier) *ObjectReference {
@@ -187,7 +204,11 @@ type Stream struct {
 }
 
 func (s *Stream) String() string {
-	return fmt.Sprintf("stream_%d", len(s.Value))
+	if HideStreamLength {
+		return fmt.Sprintf("Stream()")
+	} else {
+		return fmt.Sprintf("Stream( size -> %d )", len(s.Value))
+	}
 }
 
 func NewStream(b []byte) *Stream {
@@ -202,8 +223,22 @@ type KeyValuePair struct {
 	Value ObjectType `json:"value"`
 }
 
+var variableDictKeys = []string{
+	"LastModified",
+	"ModDate",
+	"Length",
+}
+
 func (k *KeyValuePair) String() string {
-	return fmt.Sprintf("%s -> %s", k.Key.String(), k.Value.String())
+	key := k.Key.String()
+	if HideVariableData {
+		for _, vk := range variableDictKeys {
+			if strings.HasPrefix(key[1:], vk) {
+				return "VariableString()"
+			}
+		}
+	}
+	return fmt.Sprintf("%s -> %s", key, k.Value.String())
 }
 
 type Dictionary struct {
@@ -213,12 +248,18 @@ type Dictionary struct {
 
 func (d *Dictionary) String() string {
 	indent++
+	sort.Slice(d.Value, func(i, j int) bool {
+		return d.Value[i].Key.String() < d.Value[j].Key.String()
+	})
 	items := make([]string, 0)
 	for _, pair := range d.Value {
 		items = append(items, padding()+pair.String())
 	}
 	indent--
-	return "{\n" + strings.Join(items, ",\n") + "\n" + padding() + "}"
+	if len(items) == 0 {
+		return "Dict( size:0 ) {}"
+	}
+	return fmt.Sprintf("Dict( size:%d ) {\n%s\n"+padding()+"}", len(items), strings.Join(items, ",\n"))
 }
 
 func NewDictionary(dict []KeyValuePair) *Dictionary {
@@ -240,7 +281,10 @@ func (a *Array) String() string {
 		items = append(items, padding()+o.String())
 	}
 	indent--
-	return "[\n" + strings.Join(items, ",\n") + "\n" + padding() + "]"
+	if len(items) == 0 {
+		return "Array( size:0 ) []"
+	}
+	return fmt.Sprintf("Array( size:%d ) [\n%s\n"+padding()+"]", len(items), strings.Join(items, ",\n"))
 }
 
 func NewArray(arr []ObjectType) *Array {

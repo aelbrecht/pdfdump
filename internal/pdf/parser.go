@@ -61,8 +61,11 @@ type Parser struct {
 	references []*ObjectReference
 }
 
-func (p *Parser) Objects() map[string]*Object {
-	return p.objects
+func (p *Parser) PDF() *PDF {
+	return &PDF{
+		Version: p.version,
+		Objects: p.objects,
+	}
 }
 
 func (p *Parser) Dump(f *os.File) {
