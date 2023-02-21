@@ -11,7 +11,8 @@ import (
 func main() {
 
 	if len(os.Args) != 2 {
-		log.Fatalln("expected only one argument")
+		log.Println("error: expected one argument")
+		os.Exit(1)
 	}
 
 	f, err := os.Open(os.Args[1])
