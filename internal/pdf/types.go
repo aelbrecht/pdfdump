@@ -17,6 +17,14 @@ type PDF struct {
 	Objects map[string]*Object `json:"objects"`
 }
 
+func (p *PDF) String() string {
+	buffer := ""
+	for _, child := range p.Objects {
+		buffer += child.String()
+	}
+	return buffer
+}
+
 type ObjectIdentifier struct {
 	ObjectNumber     int `json:"number"`
 	ObjectGeneration int `json:"generation"`
