@@ -2,3 +2,5 @@
 .idea/
 *.pdf
 *.json
+test/
+*.txt

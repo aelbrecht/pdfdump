@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"pdfdump/internal/pdf"
 	"pdfdump/internal/scan"
 	"strconv"
@@ -242,9 +242,9 @@ func check(err error) {
 	}
 }
 
-func main() {
+func parsePDF(filePath string) {
 
-	f, err := os.Open("./input.pdf")
+	f, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -271,6 +271,7 @@ func main() {
 		}
 
 		if v, ok := parser.ParseObject(); ok {
+			fmt.Println(v.String())
 			objects = append(objects, v)
 			continue
 		}
@@ -294,11 +295,28 @@ func main() {
 		Children: objects,
 	}
 
-	o, err := os.Create("output.json")
-	err = json.NewEncoder(o).Encode(result)
+	dirName, fileName := path.Split(filePath)
+	fileName = strings.TrimSuffix(fileName, path.Ext(fileName))
+	o, err := os.Create(path.Join(dirName, fileName+".txt"))
 	if err != nil {
-		log.Println("could not encode json")
 		log.Fatalln(err)
 	}
 
+	for _, child := range result.Children {
+		o.WriteString(child.String())
+	}
+
+	_ = o.Close()
+	//err = json.NewEncoder(o).Encode(result)
+	//if err != nil {
+	//	log.Println("could not encode json")
+	//	log.Fatalln(err)
+	//}
+
+}
+
+func main() {
+	for _, arg := range os.Args[1:] {
+		parsePDF(arg)
+	}
 }

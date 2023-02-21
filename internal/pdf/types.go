@@ -1,5 +1,10 @@
 package pdf
 
+import (
+	"fmt"
+	"strings"
+)
+
 type PDF struct {
 	Version  string    `json:"version"`
 	Children []*Object `json:"children"`
@@ -10,9 +15,33 @@ type ObjectIdentifier struct {
 	ObjectGeneration int `json:"generation"`
 }
 
+func (o *ObjectIdentifier) String() string {
+	return fmt.Sprintf("%d, %d", o.ObjectNumber, o.ObjectGeneration)
+}
+
 type Object struct {
 	Identifier ObjectIdentifier `json:"identifier"`
 	Children   []ObjectType     `json:"children"`
+}
+
+var indent = 0
+
+func padding() string {
+	output := ""
+	for i := 0; i < indent; i++ {
+		output += "  "
+	}
+	return output
+}
+
+func (o *Object) String() string {
+	indent++
+	items := make([]string, 0)
+	for _, child := range o.Children {
+		items = append(items, padding()+child.String())
+	}
+	indent--
+	return fmt.Sprintf("Object[ %s ]\n(\n%s\n)\n\n", o.Identifier.String(), strings.Join(items, "\n"))
 }
 
 func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
@@ -23,11 +52,20 @@ func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
 }
 
 type ObjectType interface {
+	String() string
 }
 
 type Boolean struct {
 	Type  string `json:"type"`
 	Value bool   `json:"value"`
+}
+
+func (b *Boolean) String() string {
+	if b.Value {
+		return "true"
+	} else {
+		return "false"
+	}
 }
 
 func NewBoolean(b bool) *Boolean {
@@ -42,6 +80,10 @@ type String struct {
 	Value string `json:"value"`
 }
 
+func (s *String) String() string {
+	return fmt.Sprintf("\"%s\"", s.Value)
+}
+
 func NewString(s string) *String {
 	return &String{
 		Type:  "string",
@@ -53,6 +95,10 @@ type Null struct {
 	Type string `json:"type"`
 }
 
+func (n *Null) String() string {
+	return "null"
+}
+
 func NewNull() *Null {
 	return &Null{
 		Type: "null",
@@ -62,6 +108,10 @@ func NewNull() *Null {
 type FloatingNumber struct {
 	Type  string  `json:"type"`
 	Value float64 `json:"value"`
+}
+
+func (f *FloatingNumber) String() string {
+	return fmt.Sprintf("%f", f.Value)
 }
 
 func NewFloatingNumber(f float64) *FloatingNumber {
@@ -76,6 +126,10 @@ type IntegerNumber struct {
 	Value int64  `json:"value"`
 }
 
+func (i *IntegerNumber) String() string {
+	return fmt.Sprintf("%d", i.Value)
+}
+
 func NewIntegerNumber(i int64) *IntegerNumber {
 	return &IntegerNumber{
 		Type:  "int",
@@ -86,6 +140,10 @@ func NewIntegerNumber(i int64) *IntegerNumber {
 type ObjectReference struct {
 	Type  string           `json:"type"`
 	Value ObjectIdentifier `json:"value"`
+}
+
+func (o *ObjectReference) String() string {
+	return fmt.Sprintf("Object[ %s ]", o.Value.String())
 }
 
 func NewReference(ref ObjectIdentifier) *ObjectReference {
@@ -100,6 +158,10 @@ type Label struct {
 	Value string `json:"value"`
 }
 
+func (l *Label) String() string {
+	return l.Value
+}
+
 func NewLabel(t string) *Label {
 	return &Label{
 		Type:  "label",
@@ -110,6 +172,10 @@ func NewLabel(t string) *Label {
 type Stream struct {
 	Type  string `json:"type"`
 	Value []byte `json:"value"`
+}
+
+func (s *Stream) String() string {
+	return fmt.Sprintf("stream_%d", len(s.Value))
 }
 
 func NewStream(b []byte) *Stream {
@@ -124,9 +190,23 @@ type KeyValuePair struct {
 	Value ObjectType `json:"value"`
 }
 
+func (k *KeyValuePair) String() string {
+	return fmt.Sprintf("%s -> %s", k.Key.String(), k.Value.String())
+}
+
 type Dictionary struct {
 	Type  string         `json:"type"`
 	Value []KeyValuePair `json:"value"`
+}
+
+func (d *Dictionary) String() string {
+	indent++
+	items := make([]string, 0)
+	for _, pair := range d.Value {
+		items = append(items, padding()+pair.String())
+	}
+	indent--
+	return "{\n" + strings.Join(items, ",\n") + "\n" + padding() + "}"
 }
 
 func NewDictionary(dict []KeyValuePair) *Dictionary {
@@ -139,6 +219,16 @@ func NewDictionary(dict []KeyValuePair) *Dictionary {
 type Array struct {
 	Type  string       `json:"type"`
 	Value []ObjectType `json:"value"`
+}
+
+func (a *Array) String() string {
+	indent++
+	items := make([]string, 0)
+	for _, o := range a.Value {
+		items = append(items, padding()+o.String())
+	}
+	indent--
+	return "[\n" + strings.Join(items, ",\n") + "\n" + padding() + "]"
 }
 
 func NewArray(arr []ObjectType) *Array {
