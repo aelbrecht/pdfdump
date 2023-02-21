@@ -11,7 +11,7 @@ import (
 
 const historySize = 6
 
-func ScanCarriage(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func splitCarriage(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
@@ -35,7 +35,7 @@ type TokenScanner struct {
 
 func NewTokenScanner(r io.Reader) *TokenScanner {
 	scanner := bufio.NewScanner(r)
-	scanner.Split(ScanCarriage)
+	scanner.Split(splitCarriage)
 	t := &TokenScanner{
 		scanner: scanner,
 	}
@@ -107,14 +107,14 @@ func (t *TokenScanner) Pop(token string) bool {
 }
 
 func (t *TokenScanner) Peek() string {
-	return t.tokens[t.index]
+	return strings.TrimSpace(t.tokens[t.index])
 }
 
 func (t *TokenScanner) PeekAhead(offset int) string {
 	if t.index+offset >= len(t.tokens) {
 		return ""
 	} else {
-		return t.tokens[t.index+offset]
+		return strings.TrimSpace(t.tokens[t.index+offset])
 	}
 }
 
@@ -129,7 +129,7 @@ func (t *TokenScanner) scan() bool {
 	t.index = 0
 	t.tokens = make([]string, len(ts))
 	for i, s := range ts {
-		t.tokens[i] = strings.TrimSpace(s)
+		t.tokens[i] = s
 	}
 	return true
 }

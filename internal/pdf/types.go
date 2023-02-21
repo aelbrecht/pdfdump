@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -16,12 +17,17 @@ type ObjectIdentifier struct {
 }
 
 func (o *ObjectIdentifier) String() string {
-	return fmt.Sprintf("%d, %d", o.ObjectNumber, o.ObjectGeneration)
+	return fmt.Sprintf("num -> %d, gen -> %d", o.ObjectNumber, o.ObjectGeneration)
+}
+
+func (o *ObjectIdentifier) Hash() string {
+	return strconv.Itoa(o.ObjectNumber) + "," + strconv.Itoa(o.ObjectGeneration)
 }
 
 type Object struct {
-	Identifier ObjectIdentifier `json:"identifier"`
-	Children   []ObjectType     `json:"children"`
+	Identifier ObjectIdentifier   `json:"identifier"`
+	Children   []ObjectType       `json:"children"`
+	References []*ObjectReference `json:"references"`
 }
 
 var indent = 0
@@ -29,7 +35,7 @@ var indent = 0
 func padding() string {
 	output := ""
 	for i := 0; i < indent; i++ {
-		output += "  "
+		output += "\t"
 	}
 	return output
 }
@@ -41,7 +47,7 @@ func (o *Object) String() string {
 		items = append(items, padding()+child.String())
 	}
 	indent--
-	return fmt.Sprintf("Object[ %s ]\n(\n%s\n)\n\n", o.Identifier.String(), strings.Join(items, "\n"))
+	return fmt.Sprintf("Object[ %s, refs -> %d ]\n(\n%s\n)\n\n", o.Identifier.String(), len(o.References), strings.Join(items, "\n"))
 }
 
 func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
@@ -81,7 +87,12 @@ type String struct {
 }
 
 func (s *String) String() string {
-	return fmt.Sprintf("\"%s\"", s.Value)
+	v := s.Value[1 : len(s.Value)-1]
+	v = strings.ReplaceAll(v, "\\", "\\\\")
+	v = strings.ReplaceAll(v, "\n", "\\n")
+	v = strings.ReplaceAll(v, "\t", "\\t")
+	v = strings.ReplaceAll(v, "\"", "\\\"")
+	return fmt.Sprintf("\"%s\"", v)
 }
 
 func NewString(s string) *String {
@@ -139,17 +150,18 @@ func NewIntegerNumber(i int64) *IntegerNumber {
 
 type ObjectReference struct {
 	Type  string           `json:"type"`
-	Value ObjectIdentifier `json:"value"`
+	Link  ObjectIdentifier `json:"link"`
+	Value *Object          `json:"value"`
 }
 
 func (o *ObjectReference) String() string {
-	return fmt.Sprintf("Object[ %s ]", o.Value.String())
+	return fmt.Sprintf("Object[ %s ]", o.Link.String())
 }
 
 func NewReference(ref ObjectIdentifier) *ObjectReference {
 	return &ObjectReference{
-		Type:  "reference",
-		Value: ref,
+		Type: "reference",
+		Link: ref,
 	}
 }
 

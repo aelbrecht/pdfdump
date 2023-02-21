@@ -12,11 +12,38 @@ import (
 )
 
 func NewPDFParser(scanner *scan.TokenScanner) *Parser {
-	return &Parser{scanner: scanner}
+	return &Parser{
+		scanner:    scanner,
+		objects:    make(map[string]*pdf.Object),
+		version:    "",
+		references: make([]*pdf.ObjectReference, 0),
+	}
 }
 
 type Parser struct {
-	scanner *scan.TokenScanner
+	scanner    *scan.TokenScanner
+	objects    map[string]*pdf.Object
+	version    string
+	references []*pdf.ObjectReference
+}
+
+func (p *Parser) Dump(f *os.File) {
+	for _, child := range p.objects {
+		_, _ = f.WriteString(child.String())
+	}
+}
+
+func (p *Parser) ParseHeader() bool {
+	if p.version != "" {
+		return false
+	}
+	p.version = p.scanner.Next()
+	if len(p.version) == 0 || p.version[0] != '%' {
+		log.Fatalln("invalid header")
+	}
+	p.version = p.version[1:]
+	p.scanner.Next()
+	return true
 }
 
 func (p *Parser) ParseDict() (pdf.ObjectType, bool) {
@@ -134,10 +161,12 @@ func (p *Parser) ParseReference() (pdf.ObjectType, bool) {
 	if !p.scanner.Pop("R") {
 		log.Fatalln("failed to parse indirect ref")
 	}
-	return pdf.NewReference(pdf.ObjectIdentifier{
+	ref := pdf.NewReference(pdf.ObjectIdentifier{
 		ObjectNumber:     objNum,
 		ObjectGeneration: genNum,
-	}), true
+	})
+	p.references = append(p.references, ref)
+	return ref, true
 }
 
 func (p *Parser) ParseLabel() (pdf.ObjectType, bool) {
@@ -214,7 +243,8 @@ func (p *Parser) ParseObject() (*pdf.Object, bool) {
 		if p.scanner.Pop("endobj") {
 			return pdf.NewObject(id, children), true
 		}
-		children = append(children, p.ParseNext())
+		child := p.ParseNext()
+		children = append(children, child)
 	}
 	log.Fatalln("unreachable statement")
 	return nil, false
@@ -251,17 +281,9 @@ func parsePDF(filePath string) {
 
 	scanner := scan.NewTokenScanner(f)
 	parser := NewPDFParser(scanner)
-	objects := make([]*pdf.Object, 0)
-	version := ""
 	for scanner.HasToken() {
 
-		if version == "" {
-			version = scanner.Next()
-			if len(version) == 0 || version[0] != '%' {
-				log.Fatalln("invalid header")
-			}
-			version = version[1:]
-			scanner.Next()
+		if parser.ParseHeader() {
 			continue
 		}
 
@@ -271,8 +293,7 @@ func parsePDF(filePath string) {
 		}
 
 		if v, ok := parser.ParseObject(); ok {
-			fmt.Println(v.String())
-			objects = append(objects, v)
+			parser.objects[v.Identifier.Hash()] = v
 			continue
 		}
 
@@ -285,14 +306,18 @@ func parsePDF(filePath string) {
 		os.Exit(1)
 	}
 
+	for _, ref := range parser.references {
+		o, ok := parser.objects[ref.Link.Hash()]
+		if !ok {
+			log.Fatalln("unresolved reference")
+		}
+		ref.Value = o
+		o.References = append(o.References, ref)
+	}
+
 	err = f.Close()
 	if err != nil {
 		fmt.Println("failed to close file")
-	}
-
-	result := pdf.PDF{
-		Version:  version,
-		Children: objects,
 	}
 
 	dirName, fileName := path.Split(filePath)
@@ -301,18 +326,8 @@ func parsePDF(filePath string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	for _, child := range result.Children {
-		o.WriteString(child.String())
-	}
-
+	parser.Dump(o)
 	_ = o.Close()
-	//err = json.NewEncoder(o).Encode(result)
-	//if err != nil {
-	//	log.Println("could not encode json")
-	//	log.Fatalln(err)
-	//}
-
 }
 
 func main() {
