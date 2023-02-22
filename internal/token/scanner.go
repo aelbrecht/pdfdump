@@ -11,13 +11,11 @@ import (
 
 const historySize = 6
 
-var splitCharacter byte = '\r'
-
-func splitCarriage(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func split(data []byte, atEOF bool, delimiter byte) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
-	if i := bytes.IndexByte(data, splitCharacter); i >= 0 {
+	if i := bytes.IndexByte(data, delimiter); i >= 0 {
 		return i + 1, data[0:i], nil
 	}
 	if atEOF {
@@ -55,9 +53,11 @@ func NewScanner(r io.Reader) *Scanner {
 	fmt.Println()
 
 	version := string(header[:len(header)-1])
-	splitCharacter = header[len(header)-1]
+	delimiter := header[len(header)-1]
 	scanner := bufio.NewScanner(r)
-	scanner.Split(splitCarriage)
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		return split(data, atEOF, delimiter)
+	})
 	t := &Scanner{
 		scanner: scanner,
 		version: version,
