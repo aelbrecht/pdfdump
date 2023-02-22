@@ -16,10 +16,18 @@ func MatchTypes(first ObjectType, second ObjectType) float64 {
 	case *Object:
 		v1 := first.(*Object)
 		v2 := second.(*Object)
+		firstHasStream := false
+		secondHasStream := false
 		acc := 0.0
 		for _, c1 := range v1.Children {
+			if _, ok := c1.(*Stream); ok {
+				firstHasStream = true
+			}
 			bestMatch := 0.0
 			for _, c2 := range v2.Children {
+				if _, ok := c2.(*Stream); ok {
+					secondHasStream = true
+				}
 				score := MatchTypes(c1, c2)
 				if score > 0 && score > bestMatch {
 					bestMatch = score
@@ -29,6 +37,9 @@ func MatchTypes(first ObjectType, second ObjectType) float64 {
 				}
 			}
 			acc += bestMatch
+		}
+		if firstHasStream != secondHasStream {
+			return 0
 		}
 		return acc / math.Max(float64(len(v1.Children)), float64(len(v2.Children)))
 	case *Dictionary:
@@ -40,6 +51,12 @@ func MatchTypes(first ObjectType, second ObjectType) float64 {
 			for _, c2 := range v2.Value {
 				if c1.Key() != c2.Key() {
 					continue
+				}
+				_, ok1 := c1.V.(*String)
+				_, ok2 := c2.V.(*String)
+				if ok1 && ok2 && c1.Value() == c2.Value() {
+					bestMatch = 1
+					break
 				}
 				score := MatchTypes(c1.V, c2.V)
 				if score > 0 && score > bestMatch {

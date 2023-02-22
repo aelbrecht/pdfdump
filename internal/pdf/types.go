@@ -293,16 +293,6 @@ type Dictionary struct {
 
 func (d *Dictionary) String() string {
 	indent++
-	sort.Slice(d.Value, func(i, j int) bool {
-		k1 := d.Value[i].Key()
-		k2 := d.Value[j].Key()
-		if k1 != k2 {
-			return k1 < k2
-		}
-		v1 := d.Value[i].Value()
-		v2 := d.Value[j].Value()
-		return v1 < v2
-	})
 	items := make([]string, 0)
 	for _, pair := range d.Value {
 		items = append(items, padding()+pair.String())
@@ -315,6 +305,16 @@ func (d *Dictionary) String() string {
 }
 
 func NewDictionary(dict []KeyValuePair) *Dictionary {
+	sort.Slice(dict, func(i, j int) bool {
+		k1 := dict[i].Key()
+		k2 := dict[j].Key()
+		if k1 != k2 {
+			return k1 < k2
+		}
+		v1 := dict[i].Value()
+		v2 := dict[j].Value()
+		return v1 < v2
+	})
 	return &Dictionary{
 		Type:  "dict",
 		Value: dict,
