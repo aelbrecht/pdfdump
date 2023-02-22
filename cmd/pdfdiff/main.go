@@ -27,8 +27,6 @@ func diffPDF(firstPath string, secondPath string) {
 	first := parsePDF(firstPath)
 	second := parsePDF(secondPath)
 
-	fmt.Printf("comparing %d with %d objects\n", len(first.Objects), len(second.Objects))
-
 	pdf.HideIdentifiers = true
 	pdf.HideVariableData = true
 	pdf.HideRandomKeys = true
@@ -50,7 +48,6 @@ func diffPDF(firstPath string, secondPath string) {
 
 			// Lock perfect matches
 			if score == 1.0 {
-				fmt.Println(k1, k2, score)
 				firstResolved[k1] = true
 				secondResolved[k2] = true
 				bestMatches[k1] = k2
@@ -86,7 +83,6 @@ func diffPDF(firstPath string, secondPath string) {
 		}
 
 		if bestMatch != "" {
-			fmt.Println(k1, bestMatch, bestMatchScore)
 			bestMatches[k1] = bestMatch
 			firstResolved[k1] = true
 			secondResolved[bestMatch] = true
