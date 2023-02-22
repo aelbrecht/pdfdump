@@ -97,6 +97,8 @@ func diffPDF(firstPath string, secondPath string) {
 	pdf.HideRandomKeys = true
 	pdf.HideVariableData = true
 	pdf.HideIdentifiers = true
+	pdf.HideStreamLength = true
+	pdf.TrimFontPrefix = true
 
 	first := parsePDF(firstPath)
 	second := parsePDF(secondPath)

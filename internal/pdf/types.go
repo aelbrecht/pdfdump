@@ -10,10 +10,10 @@ import (
 
 var HideIdentifiers = false
 var NoIndents = false
-var HideStreamLength = true
+var HideStreamLength = false
 var HideVariableData = false
 var HideRandomKeys = false
-var TrimFontPrefix = true
+var TrimFontPrefix = false
 
 type PDF struct {
 	Version string             `json:"version"`
@@ -219,7 +219,7 @@ func (s *Stream) String() string {
 	if HideStreamLength {
 		return fmt.Sprintf("Stream()")
 	} else {
-		return fmt.Sprintf("Stream( size -> %d )", len(s.Value))
+		return fmt.Sprintf("Stream( size:%d )", len(s.Value))
 	}
 }
 
