@@ -141,35 +141,19 @@ func NewNull() *Null {
 	}
 }
 
-type FloatingNumber struct {
+type Number struct {
 	Type  string  `json:"type"`
 	Value float64 `json:"value"`
 }
 
-func (f *FloatingNumber) String() string {
-	return fmt.Sprintf("%ff", f.Value)
+func (f *Number) String() string {
+	return fmt.Sprintf("%f", f.Value)
 }
 
-func NewFloatingNumber(f float64) *FloatingNumber {
-	return &FloatingNumber{
-		Type:  "float",
+func NewNumber(f float64) *Number {
+	return &Number{
+		Type:  "number",
 		Value: f,
-	}
-}
-
-type IntegerNumber struct {
-	Type  string `json:"type"`
-	Value int64  `json:"value"`
-}
-
-func (i *IntegerNumber) String() string {
-	return fmt.Sprintf("%d", i.Value)
-}
-
-func NewIntegerNumber(i int64) *IntegerNumber {
-	return &IntegerNumber{
-		Type:  "int",
-		Value: i,
 	}
 }
 

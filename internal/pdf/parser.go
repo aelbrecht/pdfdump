@@ -192,21 +192,12 @@ func (p *Parser) ParseStream() (ObjectType, bool) {
 
 func (p *Parser) ParseNumber() (ObjectType, bool) {
 	t := p.scanner.Peek()
-	if strings.Contains(t, ".") {
-		v, err := strconv.ParseFloat(t, 64)
-		if err != nil {
-			return nil, false
-		}
-		p.scanner.Next() // consume token
-		return NewFloatingNumber(v), true
-	} else {
-		v, err := strconv.ParseInt(t, 10, 64)
-		if err != nil {
-			return nil, false
-		}
-		p.scanner.Next() // consume token
-		return NewIntegerNumber(v), true
+	v, err := strconv.ParseFloat(t, 64)
+	if err != nil {
+		return nil, false
 	}
+	p.scanner.Next() // consume token
+	return NewNumber(v), true
 }
 
 func (p *Parser) ParseString() (ObjectType, bool) {

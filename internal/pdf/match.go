@@ -115,13 +115,8 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 		if ok1 && ok2 && v1.Value() == v2.Value() {
 			return 1
 		}
-		_, ok1 = v1.V.(*IntegerNumber)
-		_, ok2 = v2.V.(*IntegerNumber)
-		if ok1 && ok2 && v1.Value() == v2.Value() {
-			return 1
-		}
-		_, ok1 = v1.V.(*FloatingNumber)
-		_, ok2 = v2.V.(*FloatingNumber)
+		_, ok1 = v1.V.(*Number)
+		_, ok2 = v2.V.(*Number)
 		if ok1 && ok2 && v1.Value() == v2.Value() {
 			return 1
 		}
@@ -139,26 +134,9 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 			return 1.0
 		}
 		return 0
-	case *FloatingNumber:
-		v1 := first.(*FloatingNumber).Value
-		v2 := second.(*FloatingNumber).Value
-		if v1 == v2 {
-			return 1.0
-		}
-		if v1 == 0 || v2 == 0 {
-			return 0
-		}
-		if v1 > 0 && v2 < 0 || v1 < 0 && v2 > 0 {
-			return 0
-		}
-		if v1 < 0 {
-			v1 = -v1
-			v2 = -v2
-		}
-		return math.Min(v1, v2) / math.Max(v1, v2)
-	case *IntegerNumber:
-		v1 := float64(first.(*IntegerNumber).Value)
-		v2 := float64(second.(*IntegerNumber).Value)
+	case *Number:
+		v1 := first.(*Number).Value
+		v2 := second.(*Number).Value
 		if v1 == v2 {
 			return 1.0
 		}
