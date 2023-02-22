@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ var HideIdentifiers = false
 var NoIndents = false
 var HideStreamLength = true
 var HideVariableData = false
+var HideRandomKeys = false
 
 type PDF struct {
 	Version string             `json:"version"`
@@ -196,7 +198,7 @@ type Label struct {
 }
 
 func (l *Label) String() string {
-	return l.Value
+	return l.Value[1:]
 }
 
 func NewLabel(t string) *Label {
@@ -237,13 +239,21 @@ var variableDictKeys = []string{
 	"Length",
 }
 
+var reRandomDictKeys = regexp.MustCompile("([A-Z]{1,4})([0-9]+)")
+
 func (k *KeyValuePair) String() string {
 	key := k.Key.String()
 	if HideVariableData {
 		for _, vk := range variableDictKeys {
-			if strings.HasPrefix(key[1:], vk) {
-				return "VariableString()"
+			if strings.HasPrefix(key, vk) {
+				return fmt.Sprintf("%s -> String()", key)
 			}
+		}
+	}
+	if HideRandomKeys {
+		matches := reRandomDictKeys.FindStringSubmatch(key)
+		if matches != nil {
+			return fmt.Sprintf("Key( prefix:%s ) -> %s", matches[1], k.Value.String())
 		}
 	}
 	return fmt.Sprintf("%s -> %s", key, k.Value.String())

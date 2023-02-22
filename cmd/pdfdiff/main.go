@@ -37,6 +37,7 @@ func diffPDF(firstPath string, secondPath string) {
 
 	pdf.HideIdentifiers = true
 	pdf.HideVariableData = true
+	pdf.HideRandomKeys = true
 	for key, object := range first.Objects {
 		firstStrings[key] = object.String()
 	}
@@ -140,14 +141,12 @@ func diffPDF(firstPath string, secondPath string) {
 	for k, v := range firstStrings {
 		if !firstResolved[k] {
 			_, _ = f1.WriteString(v)
-			fmt.Println("add missing part for f1")
 		}
 	}
 
 	for k, v := range secondStrings {
 		if !secondResolved[k] {
 			_, _ = f2.WriteString(v)
-			fmt.Println("add missing part for f2")
 		}
 	}
 
