@@ -97,8 +97,8 @@ func (p *Parser) ParseDict() (ObjectType, bool) {
 			return NewDictionary(dict), true
 		} else {
 			dict = append(dict, KeyValuePair{
-				Key:   p.ParseNext(),
-				Value: p.ParseNext(),
+				K: p.ParseNext(),
+				V: p.ParseNext(),
 			})
 		}
 	}

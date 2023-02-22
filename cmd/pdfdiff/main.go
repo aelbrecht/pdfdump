@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"log"
-	"math"
 	"os"
 	"path"
 	"pdfdump/internal/pdf"
@@ -29,47 +27,30 @@ func diffPDF(firstPath string, secondPath string) {
 	first := parsePDF(firstPath)
 	second := parsePDF(secondPath)
 
-	dmp := diffmatchpatch.New()
-	firstStrings := make(map[string]string, len(first.Objects))
-	secondStrings := make(map[string]string, len(second.Objects))
-
 	fmt.Printf("comparing %d with %d objects\n", len(first.Objects), len(second.Objects))
 
 	pdf.HideIdentifiers = true
 	pdf.HideVariableData = true
 	pdf.HideRandomKeys = true
-	for key, object := range first.Objects {
-		firstStrings[key] = object.String()
-	}
-	for key, object := range second.Objects {
-		secondStrings[key] = object.String()
-	}
-	bestMatches := make(map[string]string)
 
+	bestMatches := make(map[string]string)
 	firstResolved := make(map[string]bool)
 	secondResolved := make(map[string]bool)
 
-	for k1, s1 := range firstStrings {
-		for k2, s2 := range secondStrings {
+	for k1, o1 := range first.Objects {
+		for k2, o2 := range second.Objects {
 
 			// Skip perfect matched objects
 			if secondResolved[k2] {
 				continue
 			}
 
-			// Calculate diffs
-			diffs := dmp.DiffMain(s1, s2, false)
-
-			// Sum all distance scores
-			dist := 0
-			for _, diff := range diffs {
-				if diff.Type != diffmatchpatch.DiffEqual {
-					dist += len(diff.Text)
-				}
-			}
+			// Calculate match
+			score := pdf.MatchTypes(o1, o2)
 
 			// Lock perfect matches
-			if dist == 0 {
+			if score == 1.0 {
+				fmt.Println(k1, k2, score)
 				firstResolved[k1] = true
 				secondResolved[k2] = true
 				bestMatches[k1] = k2
@@ -78,46 +59,34 @@ func diffPDF(firstPath string, secondPath string) {
 		}
 	}
 
-	for k1, s1 := range firstStrings {
+	for k1, o1 := range first.Objects {
 
 		// Skip perfect matched objects
 		if firstResolved[k1] {
 			continue
 		}
 
-		bestDist := math.MaxInt
+		bestMatchScore := 0.0
 		bestMatch := ""
-		for k2, s2 := range secondStrings {
+		for k2, o2 := range second.Objects {
 
 			// Skip perfect matched objects
 			if secondResolved[k2] {
 				continue
 			}
 
-			// Calculate diffs
-			diffs := dmp.DiffMain(s1, s2, false)
-
-			// Sum all distance scores
-			dist := 0
-			for _, diff := range diffs {
-				if diff.Type != diffmatchpatch.DiffEqual {
-					dist += len(diff.Text)
-				}
-			}
-			maxLength := math.Max(float64(len(s1)), float64(len(s2)))
-			matchRatio := 1 - (float64(dist) / maxLength)
-			if matchRatio < 0.05 {
-				continue
-			}
+			// Calculate match
+			score := pdf.MatchTypes(o1, o2)
 
 			// Select best candidate based on distance
-			if dist < bestDist {
-				bestDist = dist
+			if score > bestMatchScore {
+				bestMatchScore = score
 				bestMatch = k2
 			}
 		}
 
 		if bestMatch != "" {
+			fmt.Println(k1, bestMatch, bestMatchScore)
 			bestMatches[k1] = bestMatch
 			firstResolved[k1] = true
 			secondResolved[bestMatch] = true
@@ -134,19 +103,19 @@ func diffPDF(firstPath string, secondPath string) {
 	}
 
 	for k1, k2 := range bestMatches {
-		_, _ = f1.WriteString(firstStrings[k1])
-		_, _ = f2.WriteString(secondStrings[k2])
+		_, _ = f1.WriteString(first.Objects[k1].String())
+		_, _ = f2.WriteString(second.Objects[k2].String())
 	}
 
-	for k, v := range firstStrings {
+	for k, v := range first.Objects {
 		if !firstResolved[k] {
-			_, _ = f1.WriteString(v)
+			_, _ = f1.WriteString(v.String())
 		}
 	}
 
-	for k, v := range secondStrings {
+	for k, v := range second.Objects {
 		if !secondResolved[k] {
-			_, _ = f2.WriteString(v)
+			_, _ = f2.WriteString(v.String())
 		}
 	}
 

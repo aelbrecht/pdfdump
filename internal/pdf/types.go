@@ -13,10 +13,15 @@ var NoIndents = false
 var HideStreamLength = true
 var HideVariableData = false
 var HideRandomKeys = false
+var TrimFontPrefix = true
 
 type PDF struct {
 	Version string             `json:"version"`
 	Objects map[string]*Object `json:"objects"`
+}
+
+type ObjectType interface {
+	String() string
 }
 
 func (p *PDF) String() string {
@@ -78,10 +83,6 @@ func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
 		Identifier: id,
 		Children:   children,
 	}
-}
-
-type ObjectType interface {
-	String() string
 }
 
 type Boolean struct {
@@ -229,8 +230,8 @@ func NewStream(b []byte) *Stream {
 }
 
 type KeyValuePair struct {
-	Key   ObjectType `json:"key"`
-	Value ObjectType `json:"value"`
+	K ObjectType `json:"key"`
+	V ObjectType `json:"value"`
 }
 
 var variableDictKeys = []string{
@@ -239,24 +240,50 @@ var variableDictKeys = []string{
 	"Length",
 }
 
-var reRandomDictKeys = regexp.MustCompile("([A-Z]{1,4})([0-9]+)")
+var fontDictKeys = []string{
+	"BaseFont",
+	"FontName",
+}
+
+var reRandomDictKeys = regexp.MustCompile("([A-Za-z]{1,4})([0-9]+)")
 
 func (k *KeyValuePair) String() string {
-	key := k.Key.String()
+	return fmt.Sprintf("%s -> %s", k.Key(), k.Value())
+}
+
+func (k *KeyValuePair) Value() string {
+	key := k.K.String()
 	if HideVariableData {
 		for _, vk := range variableDictKeys {
 			if strings.HasPrefix(key, vk) {
-				return fmt.Sprintf("%s -> String()", key)
+				return "String()"
 			}
 		}
 	}
+	if TrimFontPrefix {
+		for _, vk := range fontDictKeys {
+			if strings.HasPrefix(key, vk) {
+				xs := strings.Split(k.V.String(), "+")
+				if len(xs) == 1 || len(xs[0]) != 6 {
+					return k.V.String()
+				} else {
+					return strings.Join(xs[1:], "+")
+				}
+			}
+		}
+	}
+	return k.V.String()
+}
+
+func (k *KeyValuePair) Key() string {
+	key := k.K.String()
 	if HideRandomKeys {
 		matches := reRandomDictKeys.FindStringSubmatch(key)
 		if matches != nil {
-			return fmt.Sprintf("Key( prefix:%s ) -> %s", matches[1], k.Value.String())
+			return fmt.Sprintf("Key( prefix:%s )", matches[1])
 		}
 	}
-	return fmt.Sprintf("%s -> %s", key, k.Value.String())
+	return key
 }
 
 type Dictionary struct {
@@ -267,7 +294,14 @@ type Dictionary struct {
 func (d *Dictionary) String() string {
 	indent++
 	sort.Slice(d.Value, func(i, j int) bool {
-		return d.Value[i].Key.String() < d.Value[j].Key.String()
+		k1 := d.Value[i].Key()
+		k2 := d.Value[j].Key()
+		if k1 != k2 {
+			return k1 < k2
+		}
+		v1 := d.Value[i].Value()
+		v2 := d.Value[j].Value()
+		return v1 < v2
 	})
 	items := make([]string, 0)
 	for _, pair := range d.Value {
