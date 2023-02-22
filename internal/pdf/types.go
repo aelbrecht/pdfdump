@@ -127,6 +127,22 @@ func NewString(s string) *String {
 	}
 }
 
+type HexString struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+func (s *HexString) String() string {
+	return s.Value
+}
+
+func NewHexString(s string) *HexString {
+	return &HexString{
+		Type:  "hex",
+		Value: s,
+	}
+}
+
 type Null struct {
 	Type string `json:"type"`
 }

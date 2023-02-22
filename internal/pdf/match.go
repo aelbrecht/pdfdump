@@ -189,6 +189,8 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 			return 1.0
 		}
 		return 1.0
+	case *HexString:
+		return 1.0
 	default:
 		log.Fatalln("unhandled pdf type")
 	}

@@ -21,10 +21,6 @@ func NewParser(scanner *token.Scanner) *Parser {
 func (p *Parser) Parse() {
 	for p.scanner.HasToken() {
 
-		if p.ParseHeader() {
-			continue
-		}
-
 		if p.scanner.Peek() == "" {
 			p.scanner.Next()
 			continue
@@ -142,19 +138,6 @@ func (p *Parser) Dump(f *os.File) {
 	}
 }
 
-func (p *Parser) ParseHeader() bool {
-	if p.version != "" {
-		return false
-	}
-	p.version = p.scanner.Next()
-	if len(p.version) == 0 || p.version[0] != '%' {
-		log.Fatalln("invalid header")
-	}
-	p.version = p.version[1:]
-	p.scanner.Next()
-	return true
-}
-
 func (p *Parser) ParseDict() (ObjectType, bool) {
 	if !p.scanner.Pop("<<") {
 		return nil, false
@@ -209,6 +192,22 @@ func (p *Parser) ParseString() (ObjectType, bool) {
 		t := p.scanner.Next()
 		buffer += t
 		if t == ")" || t[len(t)-1] == ')' {
+			return NewString(buffer), true
+		}
+	}
+	log.Fatalln("unreachable statement")
+	return nil, false
+}
+
+func (p *Parser) ParseHexString() (ObjectType, bool) {
+	if p.scanner.Peek()[0] != '<' {
+		return nil, false
+	}
+	buffer := ""
+	for true {
+		t := p.scanner.Next()
+		buffer += t
+		if t == ">" || t[len(t)-1] == '>' {
 			return NewString(buffer), true
 		}
 	}
@@ -315,6 +314,10 @@ func (p *Parser) ParseNext() ObjectType {
 	}
 
 	if v, ok := p.ParseNumber(); ok {
+		return v
+	}
+
+	if v, ok := p.ParseHexString(); ok {
 		return v
 	}
 

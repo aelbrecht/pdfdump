@@ -11,11 +11,13 @@ import (
 
 const historySize = 6
 
+var splitCharacter byte = '\r'
+
 func splitCarriage(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
-	if i := bytes.IndexByte(data, '\r'); i >= 0 {
+	if i := bytes.IndexByte(data, splitCharacter); i >= 0 {
 		return i + 1, data[0:i], nil
 	}
 	if atEOF {
@@ -26,6 +28,7 @@ func splitCarriage(data []byte, atEOF bool) (advance int, token []byte, err erro
 
 type Scanner struct {
 	scanner      *bufio.Scanner
+	version      string
 	tokens       []string
 	index        int
 	history      [historySize]string
@@ -34,11 +37,32 @@ type Scanner struct {
 }
 
 func NewScanner(r io.Reader) *Scanner {
+
+	var b = make([]byte, 1)
+	var header = make([]byte, 0)
+	count := 0
+	for count < 2 {
+		_, err := r.Read(b)
+		if err != nil {
+			log.Fatalln("could not read header")
+		}
+		if b[0] == '%' {
+			count++
+			continue
+		}
+		header = append(header, b[0])
+	}
+	fmt.Println()
+
+	version := string(header[:len(header)-1])
+	splitCharacter = header[len(header)-1]
 	scanner := bufio.NewScanner(r)
 	scanner.Split(splitCarriage)
 	t := &Scanner{
 		scanner: scanner,
+		version: version,
 	}
+	t.scan() // Skip random characters in header
 	if !t.scan() {
 		log.Fatalln("EOF")
 	}
