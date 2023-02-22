@@ -73,8 +73,6 @@ func (p *Parser) Parse() {
 	}
 	p.objects = uniques
 
-	fmt.Printf("dropped %d duplicate objects\n", dupes)
-
 	for _, ref := range p.references {
 
 		if o, ok := p.objects[ref.Link.Hash()]; !ok {
