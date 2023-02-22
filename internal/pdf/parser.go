@@ -48,7 +48,7 @@ func (p *Parser) Parse() {
 	uniques := make(map[string]*Object)
 	redirected := make(map[string]*Object)
 	dupes := 0
-	opts := MatchOptions{MatchReferences: true}
+	opts := MatchOptions{MatchReferences: true, MatchStream: true}
 	for k1, o1 := range p.objects {
 		if visited[k1] {
 			continue

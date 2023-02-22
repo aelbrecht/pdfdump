@@ -9,6 +9,7 @@ import (
 type MatchOptions struct {
 	MatchReferences bool
 	MatchDepth      bool
+	MatchStream     bool
 }
 
 func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64 {
@@ -201,6 +202,14 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 			return 1.0
 		}
 	case *Null:
+		if opts.MatchStream {
+			v1 := first.(*Stream)
+			v2 := second.(*Stream)
+			if len(v1.Value) != len(v2.Value) {
+				return 0
+			}
+			return 1.0
+		}
 		return 1.0
 	default:
 		log.Fatalln("unhandled pdf type")
