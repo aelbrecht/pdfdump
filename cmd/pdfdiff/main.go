@@ -23,68 +23,32 @@ func parsePDF(filePath string) *pdf.PDF {
 	return parser.PDF()
 }
 
-func diffPDF(firstPath string, secondPath string) {
-
-	first := parsePDF(firstPath)
-	second := parsePDF(secondPath)
-
-	fmt.Printf("comparing %d with %d objects\n", len(first.Objects), len(second.Objects))
-
-	pdf.HideIdentifiers = true
-	pdf.HideVariableData = true
-	pdf.HideRandomKeys = true
-
-	bestMatches := make(map[string]string)
-	bestMatchScores := make(map[string]float64)
-	firstResolved := make(map[string]bool)
-	secondResolved := make(map[string]bool)
-
-	for k1, o1 := range first.Objects {
-		for k2, o2 := range second.Objects {
-
-			// Skip perfect matched objects
-			if secondResolved[k2] {
-				continue
-			}
-
-			// Calculate match
-			score := pdf.MatchTypes(o1, o2)
-
-			// Lock perfect matches
-			if score == 1.0 {
-				firstResolved[k1] = true
-				secondResolved[k2] = true
-				bestMatches[k1] = k2
-				bestMatchScores[k1] = score
-				break
-			}
-		}
-	}
-
+func approxMatch(fst *pdf.PDF, snd *pdf.PDF, fstResolved map[string]bool, sndResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *pdf.MatchOptions) int {
 	iteration := 0
-	for len(firstResolved) != len(first.Objects) || len(secondResolved) != len(second.Objects) {
+	statApprox := 0
+	for len(fstResolved) != len(fst.Objects) || len(sndResolved) != len(snd.Objects) {
 		firstMatch := make(map[string]float64)
 		secondMatch := make(map[string]float64)
 		localMatches := make(map[string]string)
 
-		for k1, o1 := range first.Objects {
+		for k1, o1 := range fst.Objects {
 
 			// Skip perfect matched objects
-			if firstResolved[k1] {
+			if fstResolved[k1] {
 				continue
 			}
 
 			bestScore := 0.0
 			bestKey := ""
-			for k2, o2 := range second.Objects {
+			for k2, o2 := range snd.Objects {
 
 				// Skip perfect matched objects
-				if secondResolved[k2] {
+				if sndResolved[k2] {
 					continue
 				}
 
 				// Calculate match
-				score := pdf.MatchTypes(o1, o2)
+				score := pdf.MatchTypes(o1, o2, opts)
 				if score < 0.1 {
 					continue
 				}
@@ -97,7 +61,7 @@ func diffPDF(firstPath string, secondPath string) {
 			}
 
 			if bestKey != "" {
-				if firstMatch[k1] < bestScore {
+				if firstMatch[k1] < bestScore && secondMatch[bestKey] < bestScore {
 					localMatches[k1] = bestKey
 				}
 				firstMatch[k1] = math.Max(firstMatch[k1], bestScore)
@@ -112,9 +76,10 @@ func diffPDF(firstPath string, secondPath string) {
 		for k1, k2 := range localMatches {
 			if firstMatch[k1] == secondMatch[k2] {
 				bestMatches[k1] = k2
-				bestMatchScores[k1] = firstMatch[k1]
-				firstResolved[k1] = true
-				secondResolved[k2] = true
+				bestScores[k1] = firstMatch[k1]
+				fstResolved[k1] = true
+				sndResolved[k2] = true
+				statApprox++
 			}
 		}
 
@@ -122,6 +87,71 @@ func diffPDF(firstPath string, secondPath string) {
 		if iteration > 100 {
 			log.Fatalln("infinite loop detected")
 		}
+	}
+
+	return statApprox
+}
+
+func diffPDF(firstPath string, secondPath string) {
+
+	pdf.HideRandomKeys = true
+	pdf.HideVariableData = true
+	pdf.HideIdentifiers = true
+
+	first := parsePDF(firstPath)
+	second := parsePDF(secondPath)
+
+	n1 := len(first.Objects)
+	n2 := len(second.Objects)
+	if n1 > n2 {
+		n2, n1 = n1, n2
+	}
+
+	fmt.Printf("comparing %d with %d objects\n", len(first.Objects), len(second.Objects))
+
+	bestMatches := make(map[string]string)
+	bestMatchScores := make(map[string]float64)
+	fstResolved := make(map[string]bool)
+	sndResolved := make(map[string]bool)
+
+	matches := 0
+	for k1, o1 := range first.Objects {
+		for k2, o2 := range second.Objects {
+
+			// Skip perfect matched objects
+			if sndResolved[k2] {
+				continue
+			}
+
+			// Calculate match
+			opts := pdf.MatchOptions{}
+			score := pdf.MatchTypes(o1, o2, &opts)
+
+			// Lock perfect matches
+			if score == 1.0 {
+				fstResolved[k1] = true
+				sndResolved[k2] = true
+				bestMatches[k1] = k2
+				bestMatchScores[k1] = score
+				matches++
+				break
+			}
+		}
+	}
+	if matches > 0 {
+		fmt.Printf("found %d exact matches\n", matches)
+	}
+
+	opts := pdf.MatchOptions{MatchDepth: true}
+	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
+	if matches > 0 {
+		fmt.Printf("found %d close matches\n", matches)
+	}
+
+	opts.MatchDepth = false
+	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
+	if matches > 0 {
+		fmt.Printf("found %d far matches\n", matches)
 	}
 
 	f1, err := createOutputFile(firstPath)
@@ -143,18 +173,27 @@ func diffPDF(firstPath string, secondPath string) {
 		index++
 	}
 
+	fstUnmatched := 0
 	for k, v := range first.Objects {
-		if !firstResolved[k] {
+		if !fstResolved[k] {
 			_, _ = f1.WriteString(fmt.Sprintf("# Object Unmatched\n"))
 			_, _ = f1.WriteString(v.String())
+			fstUnmatched++
 		}
 	}
 
+	sndUnmatched := 0
 	for k, v := range second.Objects {
-		if !secondResolved[k] {
+		if !sndResolved[k] {
 			_, _ = f2.WriteString(fmt.Sprintf("# Object Unmatched\n"))
 			_, _ = f2.WriteString(v.String())
+			sndUnmatched++
 		}
+	}
+
+	if n2-n1 != 0 {
+		success := 1.0 - float64(fstUnmatched+sndUnmatched-(n2-n1))/float64(n1)
+		fmt.Printf("match success ratio: %d%%\n", int(math.Round(success*100)))
 	}
 
 	_ = f1.Close()

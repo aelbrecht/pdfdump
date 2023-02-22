@@ -49,6 +49,7 @@ type Object struct {
 	Identifier ObjectIdentifier   `json:"identifier"`
 	Children   []ObjectType       `json:"children"`
 	References []*ObjectReference `json:"references"`
+	Depth      int                `json:"depth"`
 }
 
 var indent = 0
@@ -71,11 +72,11 @@ func (o *Object) String() string {
 		items = append(items, padding()+child.String())
 	}
 	indent--
-	identifier := fmt.Sprintf(" %s, refs:%d ", o.Identifier.String(), len(o.References))
-	if HideIdentifiers {
-		identifier = ""
+	header := ""
+	if !HideIdentifiers {
+		header = fmt.Sprintf(" %s, refs:%d ", o.Identifier.String(), len(o.References))
 	}
-	return fmt.Sprintf("Object(%s) {\n%s\n}\n\n", identifier, strings.Join(items, "\n"))
+	return fmt.Sprintf("Object(%s) {\n%s\n}\n\n", header, strings.Join(items, "\n"))
 }
 
 func NewObject(id ObjectIdentifier, children []ObjectType) *Object {
@@ -146,7 +147,7 @@ type FloatingNumber struct {
 }
 
 func (f *FloatingNumber) String() string {
-	return fmt.Sprintf("%f", f.Value)
+	return fmt.Sprintf("%ff", f.Value)
 }
 
 func NewFloatingNumber(f float64) *FloatingNumber {

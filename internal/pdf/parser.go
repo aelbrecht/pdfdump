@@ -44,14 +44,84 @@ func (p *Parser) Parse() {
 		os.Exit(1)
 	}
 
-	for _, ref := range p.references {
-		o, ok := p.objects[ref.Link.Hash()]
-		if !ok {
-			log.Fatalln("unresolved reference")
+	visited := make(map[string]bool)
+	uniques := make(map[string]*Object)
+	redirected := make(map[string]*Object)
+	dupes := 0
+	opts := MatchOptions{MatchReferences: true}
+	for k1, o1 := range p.objects {
+		if visited[k1] {
+			continue
 		}
-		ref.Value = o
-		o.References = append(o.References, ref)
+		visited[k1] = true
+		uniques[k1] = o1
+		for k2, o2 := range p.objects {
+			if k1 == k2 {
+				continue
+			}
+			if visited[k2] {
+				continue
+			}
+			score := MatchTypes(o1, o2, &opts)
+			if score == 1 {
+				visited[k2] = true
+				redirected[k2] = o1
+				dupes++
+				break
+			}
+		}
 	}
+	p.objects = uniques
+
+	fmt.Printf("dropped %d duplicate objects\n", dupes)
+
+	for _, ref := range p.references {
+
+		if o, ok := p.objects[ref.Link.Hash()]; !ok {
+			redirect, ok := redirected[ref.Link.Hash()]
+			if !ok {
+				log.Fatalln("unresolved reference")
+			}
+			ref.Link = redirect.Identifier
+			ref.Value = redirect
+			redirect.References = append(redirect.References, ref)
+		} else {
+			ref.Value = o
+			o.References = append(o.References, ref)
+		}
+	}
+
+	for _, o := range p.objects {
+		if len(o.References) == 0 {
+			assignMinimalDepth(o, 0)
+		}
+	}
+}
+
+func assignMinimalDepth(root ObjectType, depth int) {
+	switch root.(type) {
+	case *Object:
+		for _, child := range root.(*Object).Children {
+			assignMinimalDepth(child, depth+1)
+		}
+	case *Dictionary:
+		for _, child := range root.(*Dictionary).Value {
+			assignMinimalDepth(child.V, depth+1)
+		}
+	case *Array:
+		for _, child := range root.(*Array).Value {
+			assignMinimalDepth(child, depth+1)
+		}
+	case *ObjectReference:
+		object := root.(*ObjectReference).Value
+		if object.Depth == 0 || depth <= object.Depth {
+			object.Depth = depth
+			assignMinimalDepth(object, depth+1)
+		}
+	default:
+		// pass
+	}
+
 }
 
 type Parser struct {
