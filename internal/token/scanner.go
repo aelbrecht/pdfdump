@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -58,6 +59,9 @@ func NewScanner(r io.Reader) *Scanner {
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		return split(data, atEOF, delimiter)
 	})
+	bufferSize := 1024 * 1024
+	buffer := make([]byte, bufferSize)
+	scanner.Buffer(buffer, bufferSize)
 	t := &Scanner{
 		scanner: scanner,
 		version: version,
@@ -131,6 +135,11 @@ func (t *Scanner) Pop(token string) bool {
 }
 
 func (t *Scanner) Peek() string {
+	if t.index >= len(t.tokens) {
+		fmt.Println("error: token out of bounds")
+		t.Dump()
+		os.Exit(1)
+	}
 	return strings.TrimSpace(t.tokens[t.index])
 }
 
@@ -144,6 +153,10 @@ func (t *Scanner) PeekAhead(offset int) string {
 
 func (t *Scanner) scan() bool {
 	if !t.scanner.Scan() {
+		err := t.scanner.Err()
+		if err != nil {
+			log.Fatalln(err)
+		}
 		return false
 	}
 	line := t.scanner.Text()
