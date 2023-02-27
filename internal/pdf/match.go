@@ -25,6 +25,9 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 		if opts.MatchDepth && v1.Depth != v2.Depth {
 			return 0
 		}
+		if len(v1.Children) == 0 && len(v2.Children) == 0 {
+			return 1
+		}
 		firstHasStream := false
 		secondHasStream := false
 		acc := 0.0
@@ -54,6 +57,9 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 	case *Dictionary:
 		v1 := first.(*Dictionary)
 		v2 := second.(*Dictionary)
+		if len(v1.Value) == 0 && len(v2.Value) == 0 {
+			return 1
+		}
 		acc := 0.0
 		marked := make(map[int]bool)
 		for _, c1 := range v1.Value {
@@ -84,6 +90,9 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 	case *Array:
 		v1 := first.(*Array)
 		v2 := second.(*Array)
+		if len(v1.Value) == 0 && len(v2.Value) == 0 {
+			return 1
+		}
 		acc := 0.0
 		i := 0
 		for _, c1 := range v1.Value {

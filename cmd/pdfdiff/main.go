@@ -141,19 +141,19 @@ func diffPDF(firstPath string, secondPath string) {
 		}
 	}
 	if matches > 0 {
-		fmt.Printf("found %d exact matches\n", matches)
+		fmt.Printf("exact matches:\t%d\n", matches)
 	}
 
 	opts := pdf.MatchOptions{MatchDepth: true}
 	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
 	if matches > 0 {
-		fmt.Printf("found %d close matches\n", matches)
+		fmt.Printf("close matches:\t%d\n", matches)
 	}
 
 	opts.MatchDepth = false
 	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
 	if matches > 0 {
-		fmt.Printf("found %d far matches\n", matches)
+		fmt.Printf("distant matches:\t%d\n", matches)
 	}
 
 	f1, err := createOutputFile(firstPath)
@@ -193,10 +193,8 @@ func diffPDF(firstPath string, secondPath string) {
 		}
 	}
 
-	if n2-n1 != 0 {
-		success := 1.0 - float64(fstUnmatched+sndUnmatched-(n2-n1))/float64(n1)
-		fmt.Printf("match success ratio: %d%%\n", int(math.Round(success*100)))
-	}
+	success := 1.0 - (math.Max(float64(fstUnmatched), float64(sndUnmatched))-float64(n2-n1))/float64(n1)
+	fmt.Printf("match rate:\t%d%%\n", int(math.Round(success*100)))
 
 	_ = f1.Close()
 	_ = f2.Close()

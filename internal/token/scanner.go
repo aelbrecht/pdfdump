@@ -51,7 +51,6 @@ func NewScanner(r io.Reader) *Scanner {
 		}
 		header = append(header, b[0])
 	}
-	fmt.Println()
 
 	version := string(header[:len(header)-1])
 	delimiter := header[len(header)-1]
