@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
-	"pdfdump/internal/pdfdiff"
+	"pdfdump/external/pdfdiff"
 	"strings"
 )
 

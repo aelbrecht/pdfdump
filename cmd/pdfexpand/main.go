@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
-	"pdfdump/internal/pdf"
+	"pdfdump/external/pdf"
 	"pdfdump/internal/token"
 	"strings"
 )

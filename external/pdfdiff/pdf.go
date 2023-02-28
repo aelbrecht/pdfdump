@@ -6,17 +6,17 @@ import (
 	"log"
 	"math"
 	"os"
-	"pdfdump/internal/pdf"
+	pdf2 "pdfdump/external/pdf"
 	"pdfdump/internal/token"
 )
 
-func parsePDF(filePath string) *pdf.PDF {
+func parsePDF(filePath string) *pdf2.PDF {
 	f, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println(err)
 	}
 	scanner := token.NewScanner(f)
-	parser := pdf.NewParser(scanner)
+	parser := pdf2.NewParser(scanner)
 	parser.Parse()
 	_ = f.Close()
 	return parser.PDF()
@@ -29,7 +29,7 @@ type Comparison struct {
 	RightOutput string
 }
 
-func approxMatch(left *pdf.PDF, right *pdf.PDF, leftResolved map[string]bool, rightResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *pdf.MatchOptions) int {
+func approxMatch(left *pdf2.PDF, right *pdf2.PDF, leftResolved map[string]bool, rightResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *pdf2.MatchOptions) int {
 	iteration := 0
 	statApprox := 0
 	for len(leftResolved) != len(left.Objects) || len(rightResolved) != len(right.Objects) {
@@ -54,7 +54,7 @@ func approxMatch(left *pdf.PDF, right *pdf.PDF, leftResolved map[string]bool, ri
 				}
 
 				// Calculate match
-				score := pdf.MatchTypes(o1, o2, opts)
+				score := pdf2.MatchTypes(o1, o2, opts)
 				if score < 0.1 {
 					continue
 				}
@@ -100,11 +100,11 @@ func approxMatch(left *pdf.PDF, right *pdf.PDF, leftResolved map[string]bool, ri
 
 func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 
-	pdf.HideRandomKeys = true
-	pdf.HideVariableData = true
-	pdf.HideIdentifiers = true
-	pdf.HideStreamLength = true
-	pdf.TrimFontPrefix = true
+	pdf2.HideRandomKeys = true
+	pdf2.HideVariableData = true
+	pdf2.HideIdentifiers = true
+	pdf2.HideStreamLength = true
+	pdf2.TrimFontPrefix = true
 
 	left := parsePDF(leftPath)
 	right := parsePDF(rightPath)
@@ -134,8 +134,8 @@ func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 			}
 
 			// Calculate match
-			opts := pdf.MatchOptions{}
-			score := pdf.MatchTypes(o1, o2, &opts)
+			opts := pdf2.MatchOptions{}
+			score := pdf2.MatchTypes(o1, o2, &opts)
 
 			// Lock perfect matches
 			if score == 1.0 {
@@ -152,7 +152,7 @@ func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 		fmt.Printf("exact matches:\t%d\n", matches)
 	}
 
-	opts := pdf.MatchOptions{MatchDepth: true}
+	opts := pdf2.MatchOptions{MatchDepth: true}
 	matches = approxMatch(left, right, leftResolved, rightResolved, bestMatches, bestMatchScores, &opts)
 	if matches > 0 && verbose {
 		fmt.Printf("close matches:\t%d\n", matches)

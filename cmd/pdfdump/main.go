@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"pdfdump/internal/pdf"
+	"pdfdump/external/pdf"
 	"pdfdump/internal/token"
 )
 
