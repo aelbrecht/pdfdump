@@ -6,12 +6,11 @@ import (
 	"log"
 	"os"
 	"path"
-	"pdfdump/internal/diff"
 	"pdfdump/internal/pdfdiff"
 	"strings"
 )
 
-func writeDiffToDisk(diff *pdfdiff.DiffResult) error {
+func writeDiffToDisk(diff *pdfdiff.Comparison) error {
 	f1, err := createOutputFile(diff.LeftPath)
 	if err != nil {
 		return err
@@ -43,8 +42,8 @@ func printDivider(n int) {
 	fmt.Println()
 }
 
-func printDiff(result *pdfdiff.DiffResult) {
-	difference := diff.Diff(result.LeftOutput, result.RightOutput)
+func printDiff(result *pdfdiff.Comparison) {
+	difference := result.String()
 
 	lines := strings.Split(difference, "\n")
 	maxLineLength := 0
@@ -107,7 +106,7 @@ func main() {
 		log.Fatalln("error: no input files specified")
 	}
 
-	result := pdfdiff.Diff(*leftPath, *rightPath, *isVerbose)
+	result := pdfdiff.Compare(*leftPath, *rightPath, *isVerbose)
 	hasAction := false
 	if *shouldDiff {
 		printDiff(result)

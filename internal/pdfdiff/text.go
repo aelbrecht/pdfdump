@@ -1,4 +1,4 @@
-package diff
+package pdfdiff
 
 import (
 	"bytes"
@@ -34,9 +34,9 @@ func (f *comparer) emit() {
 	}
 }
 
-func Diff(left string, right string) string {
+func (c *Comparison) String() string {
 	cmp := comparer{}
-	return cmp.diff(left, right)
+	return cmp.diff(c.LeftOutput, c.RightOutput)
 }
 
 func (f *comparer) diff(left string, right string) string {

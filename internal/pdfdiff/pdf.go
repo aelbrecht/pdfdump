@@ -22,7 +22,7 @@ func parsePDF(filePath string) *pdf.PDF {
 	return parser.PDF()
 }
 
-type DiffResult struct {
+type Comparison struct {
 	LeftPath    string
 	RightPath   string
 	LeftOutput  string
@@ -98,7 +98,7 @@ func approxMatch(left *pdf.PDF, right *pdf.PDF, leftResolved map[string]bool, ri
 	return statApprox
 }
 
-func Diff(leftPath string, rightPath string, verbose bool) *DiffResult {
+func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 
 	pdf.HideRandomKeys = true
 	pdf.HideVariableData = true
@@ -200,7 +200,7 @@ func Diff(leftPath string, rightPath string, verbose bool) *DiffResult {
 		fmt.Printf("match rate:\t%d%%\n", int(math.Round(success*100)))
 	}
 
-	return &DiffResult{
+	return &Comparison{
 		LeftPath:    leftPath,
 		RightPath:   rightPath,
 		LeftOutput:  leftBuffer.String(),
