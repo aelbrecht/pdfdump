@@ -1,6 +1,7 @@
 package pdf
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -292,9 +293,29 @@ func (k *KeyValuePair) Value() string {
 func (k *KeyValuePair) Key() string {
 	key := k.K.String()
 	if HideRandomKeys {
-		matches := reRandomDictKeys.FindStringSubmatch(key)
-		if matches != nil {
-			return fmt.Sprintf("Key( prefix:%s )", matches[1])
+		lastChar := key[len(key)-1]
+		if !(lastChar >= '0' && lastChar <= '9') {
+			return key
+		}
+		parsePrefix := true
+		hasPrefix := false
+		prefix := bytes.Buffer{}
+		for _, c := range key {
+			if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' {
+				if !parsePrefix {
+					return key
+				}
+				hasPrefix = true
+				prefix.WriteRune(c)
+			} else if c >= '0' && c <= '9' {
+				if !hasPrefix {
+					return key
+				}
+				parsePrefix = false
+			}
+		}
+		if !parsePrefix {
+			return fmt.Sprintf("Key( prefix:%s )", prefix.String())
 		}
 	}
 	return key
