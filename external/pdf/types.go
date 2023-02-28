@@ -251,6 +251,7 @@ var variableDictKeys = []string{
 	"LastModified",
 	"ModDate",
 	"Length",
+	"CreationDate",
 }
 
 var fontDictKeys = []string{

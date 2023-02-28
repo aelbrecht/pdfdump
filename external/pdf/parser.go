@@ -184,14 +184,14 @@ func (p *Parser) ParseNumber() (ObjectType, bool) {
 }
 
 func (p *Parser) ParseString() (ObjectType, bool) {
-	if p.scanner.Peek()[0] != '(' {
+	if !p.scanner.PeekChar('(') {
 		return nil, false
 	}
 	buffer := ""
 	for true {
 		t := p.scanner.Next()
 		buffer += t
-		if t == ")" || t[len(t)-1] == ')' {
+		if len(t) > 0 && (t == ")" || t[len(t)-1] == ')') {
 			return NewText(buffer), true
 		}
 	}
@@ -200,7 +200,7 @@ func (p *Parser) ParseString() (ObjectType, bool) {
 }
 
 func (p *Parser) ParseHexString() (ObjectType, bool) {
-	if p.scanner.Peek()[0] != '<' {
+	if !p.scanner.PeekChar('<') {
 		return nil, false
 	}
 	buffer := ""
@@ -269,7 +269,7 @@ func (p *Parser) ParseReference() (ObjectType, bool) {
 }
 
 func (p *Parser) ParseLabel() (ObjectType, bool) {
-	if p.scanner.Peek()[0] != '/' {
+	if !p.scanner.PeekChar('/') {
 		return nil, false
 	}
 	t := p.scanner.Next()

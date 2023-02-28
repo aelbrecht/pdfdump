@@ -146,6 +146,14 @@ func (t *Scanner) Peek() string {
 	return strings.TrimSpace(t.tokens[t.index])
 }
 
+func (t *Scanner) PeekChar(chr byte) bool {
+	next := t.Peek()
+	if len(next) > 0 && t.Peek()[0] == chr {
+		return true
+	}
+	return false
+}
+
 func (t *Scanner) PeekAhead(offset int) string {
 	if t.index+offset >= len(t.tokens) {
 		return ""
