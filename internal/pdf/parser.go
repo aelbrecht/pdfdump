@@ -192,7 +192,7 @@ func (p *Parser) ParseString() (ObjectType, bool) {
 		t := p.scanner.Next()
 		buffer += t
 		if t == ")" || t[len(t)-1] == ')' {
-			return NewString(buffer), true
+			return NewText(buffer), true
 		}
 	}
 	log.Fatalln("unreachable statement")
@@ -208,7 +208,7 @@ func (p *Parser) ParseHexString() (ObjectType, bool) {
 		t := p.scanner.Next()
 		buffer += t
 		if t == ">" || t[len(t)-1] == '>' {
-			return NewString(buffer), true
+			return NewText(buffer), true
 		}
 	}
 	log.Fatalln("unreachable statement")

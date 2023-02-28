@@ -119,8 +119,8 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 		if v1.Key() != v2.Key() {
 			return 0
 		}
-		_, ok1 := v1.V.(*String)
-		_, ok2 := v2.V.(*String)
+		_, ok1 := v1.V.(*Text)
+		_, ok2 := v2.V.(*Text)
 		if ok1 && ok2 && v1.Value() == v2.Value() {
 			return 1
 		}
@@ -136,9 +136,9 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 		}
 		v := MatchTypes(v1.V, v2.V, opts)
 		return v
-	case *String:
-		v1 := first.(*String)
-		v2 := second.(*String)
+	case *Text:
+		v1 := first.(*Text)
+		v2 := second.(*Text)
 		if v1.Value == v2.Value {
 			return 1.0
 		}

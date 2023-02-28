@@ -1,203 +1,32 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"path"
-	"pdfdump/internal/pdf"
-	"pdfdump/internal/token"
+	"pdfdump/internal/diff"
+	"pdfdump/internal/pdfdiff"
 	"strings"
 )
 
-func parsePDF(filePath string) *pdf.PDF {
-	f, err := os.Open(filePath)
+func writeDiffToDisk(diff *pdfdiff.DiffResult) error {
+	f1, err := createOutputFile(diff.LeftPath)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
-	scanner := token.NewScanner(f)
-	parser := pdf.NewParser(scanner)
-	parser.Parse()
-	_ = f.Close()
-	return parser.PDF()
-}
-
-func approxMatch(fst *pdf.PDF, snd *pdf.PDF, fstResolved map[string]bool, sndResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *pdf.MatchOptions) int {
-	iteration := 0
-	statApprox := 0
-	for len(fstResolved) != len(fst.Objects) || len(sndResolved) != len(snd.Objects) {
-		firstMatch := make(map[string]float64)
-		secondMatch := make(map[string]float64)
-		localMatches := make(map[string]string)
-
-		for k1, o1 := range fst.Objects {
-
-			// Skip perfect matched objects
-			if fstResolved[k1] {
-				continue
-			}
-
-			bestScore := 0.0
-			bestKey := ""
-			for k2, o2 := range snd.Objects {
-
-				// Skip perfect matched objects
-				if sndResolved[k2] {
-					continue
-				}
-
-				// Calculate match
-				score := pdf.MatchTypes(o1, o2, opts)
-				if score < 0.1 {
-					continue
-				}
-
-				// Select best candidate based on distance
-				if score > bestScore {
-					bestScore = score
-					bestKey = k2
-				}
-			}
-
-			if bestKey != "" {
-				if firstMatch[k1] < bestScore && secondMatch[bestKey] < bestScore {
-					localMatches[k1] = bestKey
-				}
-				firstMatch[k1] = math.Max(firstMatch[k1], bestScore)
-				secondMatch[bestKey] = math.Max(secondMatch[bestKey], bestScore)
-			}
-		}
-
-		if len(localMatches) == 0 {
-			break
-		}
-
-		for k1, k2 := range localMatches {
-			if firstMatch[k1] == secondMatch[k2] {
-				bestMatches[k1] = k2
-				bestScores[k1] = firstMatch[k1]
-				fstResolved[k1] = true
-				sndResolved[k2] = true
-				statApprox++
-			}
-		}
-
-		iteration++
-		if iteration > 100 {
-			log.Fatalln("infinite loop detected")
-		}
-	}
-
-	return statApprox
-}
-
-func diffPDF(firstPath string, secondPath string) {
-
-	pdf.HideRandomKeys = true
-	pdf.HideVariableData = true
-	pdf.HideIdentifiers = true
-	pdf.HideStreamLength = true
-	pdf.TrimFontPrefix = true
-
-	first := parsePDF(firstPath)
-	second := parsePDF(secondPath)
-
-	n1 := len(first.Objects)
-	n2 := len(second.Objects)
-	if n1 > n2 {
-		n2, n1 = n1, n2
-	}
-
-	fmt.Printf("comparing %d with %d objects\n", len(first.Objects), len(second.Objects))
-
-	bestMatches := make(map[string]string)
-	bestMatchScores := make(map[string]float64)
-	fstResolved := make(map[string]bool)
-	sndResolved := make(map[string]bool)
-
-	matches := 0
-	for k1, o1 := range first.Objects {
-		for k2, o2 := range second.Objects {
-
-			// Skip perfect matched objects
-			if sndResolved[k2] {
-				continue
-			}
-
-			// Calculate match
-			opts := pdf.MatchOptions{}
-			score := pdf.MatchTypes(o1, o2, &opts)
-
-			// Lock perfect matches
-			if score == 1.0 {
-				fstResolved[k1] = true
-				sndResolved[k2] = true
-				bestMatches[k1] = k2
-				bestMatchScores[k1] = score
-				matches++
-				break
-			}
-		}
-	}
-	if matches > 0 {
-		fmt.Printf("exact matches:\t%d\n", matches)
-	}
-
-	opts := pdf.MatchOptions{MatchDepth: true}
-	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
-	if matches > 0 {
-		fmt.Printf("close matches:\t%d\n", matches)
-	}
-
-	opts.MatchDepth = false
-	matches = approxMatch(first, second, fstResolved, sndResolved, bestMatches, bestMatchScores, &opts)
-	if matches > 0 {
-		fmt.Printf("distant matches:\t%d\n", matches)
-	}
-
-	f1, err := createOutputFile(firstPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	f2, err := createOutputFile(secondPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	index := 0
-	for k1, k2 := range bestMatches {
-		score := int(math.Round(bestMatchScores[k1] * 100))
-		_, _ = f1.WriteString(fmt.Sprintf("# Object (%d) (%d%%)\n", index, score))
-		_, _ = f2.WriteString(fmt.Sprintf("# Object (%d) (%d%%)\n", index, score))
-		_, _ = f1.WriteString(first.Objects[k1].String())
-		_, _ = f2.WriteString(second.Objects[k2].String())
-		index++
-	}
-
-	fstUnmatched := 0
-	for k, v := range first.Objects {
-		if !fstResolved[k] {
-			_, _ = f1.WriteString(fmt.Sprintf("# Object Unmatched\n"))
-			_, _ = f1.WriteString(v.String())
-			fstUnmatched++
-		}
-	}
-
-	sndUnmatched := 0
-	for k, v := range second.Objects {
-		if !sndResolved[k] {
-			_, _ = f2.WriteString(fmt.Sprintf("# Object Unmatched\n"))
-			_, _ = f2.WriteString(v.String())
-			sndUnmatched++
-		}
-	}
-
-	success := 1.0 - (math.Max(float64(fstUnmatched), float64(sndUnmatched))-float64(n2-n1))/float64(n1)
-	fmt.Printf("match rate:\t%d%%\n", int(math.Round(success*100)))
-
+	_, _ = f1.WriteString(diff.LeftOutput)
 	_ = f1.Close()
+
+	f2, err := createOutputFile(diff.RightPath)
+	if err != nil {
+		return err
+	}
+	_, _ = f2.WriteString(diff.RightOutput)
 	_ = f2.Close()
+
+	return nil
 }
 
 func createOutputFile(filePath string) (*os.File, error) {
@@ -206,9 +35,93 @@ func createOutputFile(filePath string) (*os.File, error) {
 	return os.Create(path.Join(dirName, fileName+".txt"))
 }
 
-func main() {
-	if len(os.Args) != 3 {
-		log.Fatalln("expected 2 files as input args")
+func printDivider(n int) {
+	fmt.Print("\u001B[39m")
+	for j := 0; j < n; j++ {
+		fmt.Print("-")
 	}
-	diffPDF(os.Args[1], os.Args[2])
+	fmt.Println()
+}
+
+func printDiff(result *pdfdiff.DiffResult) {
+	difference := diff.Diff(result.LeftOutput, result.RightOutput)
+
+	lines := strings.Split(difference, "\n")
+	maxLineLength := 0
+	for _, line := range lines {
+		tabs := strings.Count(line, "\t")
+		length := len(line) - tabs + 8*tabs
+		if length > maxLineLength && length < 300 {
+			maxLineLength = length
+		}
+	}
+
+	showDivider := false
+	printDivider(maxLineLength)
+	for i := 0; i < len(lines); i++ {
+		if len(lines[i]) == 0 {
+			continue
+		}
+		if lines[i][0] == '+' {
+			fmt.Printf("\033[92m%s\n", lines[i])
+			showDivider = true
+			continue
+		} else if lines[i][0] == '-' {
+			fmt.Printf("\033[91m%s\n", lines[i])
+			showDivider = true
+			continue
+		}
+
+		isVisible := false
+		for j := -5; j < 6; j++ {
+			index := i + j
+			if index < 0 || index >= len(lines) || len(lines[index]) == 0 {
+				continue
+			}
+			c := lines[index][0]
+			if c == '+' || c == '-' {
+				isVisible = true
+				break
+			}
+		}
+		if isVisible {
+			fmt.Printf("\033[39m%s\n", lines[i])
+		} else if showDivider {
+			showDivider = false
+			printDivider(maxLineLength)
+		}
+	}
+	printDivider(maxLineLength)
+}
+
+func main() {
+
+	shouldDump := flag.Bool("dump", false, "write the comparable text file to disk using")
+	shouldDiff := flag.Bool("diff", false, "output diff to stdout")
+	isVerbose := flag.Bool("verbose", false, "output stats")
+	leftPath := flag.String("left", "", "left input file")
+	rightPath := flag.String("right", "", "right input file")
+	flag.Parse()
+
+	if *leftPath == "" || *rightPath == "" {
+		log.Fatalln("error: no input files specified")
+	}
+
+	result := pdfdiff.Diff(*leftPath, *rightPath, *isVerbose)
+	hasAction := false
+	if *shouldDiff {
+		printDiff(result)
+		hasAction = true
+	}
+	if *shouldDump {
+		err := writeDiffToDisk(result)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		hasAction = true
+	}
+
+	if !hasAction {
+		log.Fatalln("error: no action specified")
+	}
 }

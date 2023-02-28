@@ -1,6 +1,8 @@
 package pdf
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"sort"
@@ -106,12 +108,22 @@ func NewBoolean(b bool) *Boolean {
 	}
 }
 
-type String struct {
+type Text struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
 }
 
-func (s *String) String() string {
+func toHash(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (s *Text) String() string {
+	if len(s.Value) > 240 {
+		hash := toHash(s.Value)
+		return fmt.Sprintf("String( length: %d, hash: %s )", len(s.Value), hash)
+	}
 	v := s.Value[1 : len(s.Value)-1]
 	v = strings.ReplaceAll(v, "\\", "\\\\")
 	v = strings.ReplaceAll(v, "\n", "\\n")
@@ -120,8 +132,8 @@ func (s *String) String() string {
 	return fmt.Sprintf("\"%s\"", v)
 }
 
-func NewString(s string) *String {
-	return &String{
+func NewText(s string) *Text {
+	return &Text{
 		Type:  "string",
 		Value: s,
 	}
