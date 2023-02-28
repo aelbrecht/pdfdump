@@ -42,8 +42,12 @@ func printDivider(n int) {
 	fmt.Println()
 }
 
-func printDiff(result *pdfdiff.Comparison) {
+func printDiff(result *pdfdiff.Comparison, printAll bool) {
 	difference := result.String()
+	if printAll {
+		fmt.Println(difference)
+		return
+	}
 
 	lines := strings.Split(difference, "\n")
 	maxLineLength := 0
@@ -98,6 +102,7 @@ func main() {
 	shouldDump := flag.Bool("dump", false, "write the comparable text file to disk using")
 	shouldDiff := flag.Bool("diff", false, "output diff to stdout")
 	isVerbose := flag.Bool("verbose", false, "output stats")
+	printAll := flag.Bool("full", false, "print full difference")
 	leftPath := flag.String("left", "", "left input file")
 	rightPath := flag.String("right", "", "right input file")
 	flag.Parse()
@@ -109,7 +114,7 @@ func main() {
 	result := pdfdiff.Compare(*leftPath, *rightPath, *isVerbose)
 	hasAction := false
 	if *shouldDiff {
-		printDiff(result)
+		printDiff(result, *printAll)
 		hasAction = true
 	}
 	if *shouldDump {
