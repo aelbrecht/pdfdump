@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 )
@@ -43,7 +42,7 @@ func NewScanner(r io.Reader) *Scanner {
 	for count < 2 {
 		_, err := r.Read(b)
 		if err != nil {
-			log.Fatalln("could not read header")
+			panic("could not read header")
 		}
 		if b[0] == '%' {
 			count++
@@ -54,7 +53,7 @@ func NewScanner(r io.Reader) *Scanner {
 
 	version := string(header[:len(header)-1])
 	if !strings.HasPrefix(version, "PDF") {
-		log.Fatalln("invalid pdf header")
+		panic("invalid pdf header")
 	}
 
 	delimiter := header[len(header)-1]
@@ -71,7 +70,7 @@ func NewScanner(r io.Reader) *Scanner {
 	}
 	t.scan() // Skip random characters in header
 	if !t.scan() {
-		log.Fatalln("EOF")
+		panic("EOF")
 	}
 	return t
 }
@@ -113,7 +112,7 @@ func (t *Scanner) Next() string {
 	if t.index >= len(t.tokens) {
 		if !t.scan() {
 			if t.end {
-				log.Fatalln("unexpected EOF")
+				panic("unexpected EOF")
 			}
 			t.end = true
 		}
@@ -166,7 +165,7 @@ func (t *Scanner) scan() bool {
 	if !t.scanner.Scan() {
 		err := t.scanner.Err()
 		if err != nil {
-			log.Fatalln(err)
+			panic(err)
 		}
 		return false
 	}

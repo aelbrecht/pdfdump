@@ -74,7 +74,7 @@ func (p *Parser) Parse() {
 		if o, ok := p.objects[ref.Link.Hash()]; !ok {
 			redirect, ok := redirected[ref.Link.Hash()]
 			if !ok {
-				log.Fatalln("unresolved reference")
+				panic("unresolved reference")
 			}
 			ref.Link = redirect.Identifier
 			ref.Value = redirect
@@ -153,7 +153,7 @@ func (p *Parser) ParseDict() (ObjectType, bool) {
 			})
 		}
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -169,7 +169,7 @@ func (p *Parser) ParseStream() (ObjectType, bool) {
 			return NewStream(buffer), true
 		}
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -195,7 +195,7 @@ func (p *Parser) ParseString() (ObjectType, bool) {
 			return NewText(buffer), true
 		}
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -211,7 +211,7 @@ func (p *Parser) ParseHexString() (ObjectType, bool) {
 			return NewText(buffer), true
 		}
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -227,7 +227,7 @@ func (p *Parser) ParseArray() (ObjectType, bool) {
 			arr = append(arr, p.ParseNext())
 		}
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -258,7 +258,7 @@ func (p *Parser) ParseReference() (ObjectType, bool) {
 	genNum, err := strconv.Atoi(p.scanner.Next())
 	check(err)
 	if !p.scanner.Pop("R") {
-		log.Fatalln("failed to parse indirect ref")
+		panic("failed to parse indirect ref")
 	}
 	ref := NewReference(ObjectIdentifier{
 		ObjectNumber:     objNum,
@@ -274,7 +274,7 @@ func (p *Parser) ParseLabel() (ObjectType, bool) {
 	}
 	t := p.scanner.Next()
 	if t[0] != '/' {
-		log.Fatalln("invalid label start")
+		panic("invalid label start")
 	}
 	return NewLabel(t), true
 }
@@ -330,7 +330,7 @@ func (p *Parser) ParseNext() ObjectType {
 
 func check(err error) {
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 }
 
@@ -355,7 +355,7 @@ func (p *Parser) ParseObject() (*Object, bool) {
 		child := p.ParseNext()
 		children = append(children, child)
 	}
-	log.Fatalln("unreachable statement")
+	panic("unreachable statement")
 	return nil, false
 }
 
@@ -371,6 +371,6 @@ func (p *Parser) ParseTrailer() bool {
 		entries++
 		p.scanner.Next()
 	}
-	log.Fatalln("unexpected EOF")
+	panic("unexpected EOF")
 	return false
 }

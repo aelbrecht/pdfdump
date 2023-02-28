@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aelbrecht/pdfdump/internal/token"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"log"
 	"math"
 	"os"
 	"strings"
@@ -160,7 +159,7 @@ func approxMatch(left *PDF, right *PDF, leftResolved map[string]bool, rightResol
 
 		iteration++
 		if iteration > 100 {
-			log.Fatalln("infinite loop detected")
+			panic("infinite loop detected")
 		}
 	}
 

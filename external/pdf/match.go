@@ -1,7 +1,6 @@
 package pdf
 
 import (
-	"log"
 	"math"
 	"reflect"
 )
@@ -71,7 +70,7 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 				}
 				score := MatchTypes(&c1, &c2, opts)
 				if score > 1 {
-					log.Fatalln("score must be below or equal to 1")
+					panic("score must be below or equal to 1")
 				}
 				if score > 0 && score > bestMatch {
 					bestMatch = score
@@ -100,7 +99,7 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 			for j := i; j < len(v2.Value); j++ {
 				score := MatchTypes(c1, v2.Value[j], opts)
 				if score > 1 {
-					log.Fatalln("score must be below or equal to 1")
+					panic("score must be below or equal to 1")
 				}
 				if score > 0 && score > bestMatch {
 					bestMatch = score
@@ -201,7 +200,7 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 	case *HexString:
 		return 1.0
 	default:
-		log.Fatalln("unhandled pdf type")
+		panic("unhandled pdf type")
 	}
 
 	return 0.0
