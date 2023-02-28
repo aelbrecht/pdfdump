@@ -1,26 +1,15 @@
-package pdfdiff
+package pdf
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"log"
 	"math"
 	"os"
-	pdf2 "pdfdump/external/pdf"
 	"pdfdump/internal/token"
+	"strings"
 )
-
-func parsePDF(filePath string) *pdf2.PDF {
-	f, err := os.Open(filePath)
-	if err != nil {
-		fmt.Println(err)
-	}
-	scanner := token.NewScanner(f)
-	parser := pdf2.NewParser(scanner)
-	parser.Parse()
-	_ = f.Close()
-	return parser.PDF()
-}
 
 type Comparison struct {
 	LeftPath    string
@@ -29,7 +18,87 @@ type Comparison struct {
 	RightOutput string
 }
 
-func approxMatch(left *pdf2.PDF, right *pdf2.PDF, leftResolved map[string]bool, rightResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *pdf2.MatchOptions) int {
+type comparer struct {
+	buffer               bytes.Buffer
+	currentLine          string
+	currentRemoveLine    string
+	currentAddLine       string
+	currentLineHasRemove bool
+	currentLineHasAdd    bool
+}
+
+func (f *comparer) emit() {
+	if !f.currentLineHasAdd && !f.currentLineHasRemove {
+		f.buffer.WriteString(fmt.Sprintf("= %s\n", f.currentLine))
+	}
+	if f.currentLineHasAdd {
+		xs := strings.Split(f.currentAddLine, "\n")
+		for _, x := range xs {
+			f.buffer.WriteString(fmt.Sprintf("+ %s\n", x))
+		}
+	}
+	if f.currentLineHasRemove {
+		xs := strings.Split(f.currentRemoveLine, "\n")
+		for _, x := range xs {
+			f.buffer.WriteString(fmt.Sprintf("- %s\n", x))
+		}
+	}
+}
+
+func (c *Comparison) String() string {
+	cmp := comparer{}
+	return cmp.diff(c.LeftOutput, c.RightOutput)
+}
+
+func (f *comparer) diff(left string, right string) string {
+	differ := diffmatchpatch.New()
+	output := differ.DiffMain(left, right, false)
+	for _, d := range output {
+		f.parse(&d)
+	}
+	f.emit()
+	return f.buffer.String()
+}
+
+func (f *comparer) parse(d *diffmatchpatch.Diff) {
+	switch d.Type {
+	case diffmatchpatch.DiffEqual:
+		for _, c := range d.Text {
+			if c == '\n' {
+				f.emit()
+				f.currentLineHasRemove = false
+				f.currentLineHasAdd = false
+				f.currentRemoveLine = ""
+				f.currentAddLine = ""
+				f.currentLine = ""
+			} else {
+				f.currentRemoveLine += string(c)
+				f.currentAddLine += string(c)
+				f.currentLine += string(c)
+			}
+		}
+	case diffmatchpatch.DiffDelete:
+		f.currentLineHasRemove = true
+		f.currentRemoveLine += d.Text
+	case diffmatchpatch.DiffInsert:
+		f.currentLineHasAdd = true
+		f.currentAddLine += d.Text
+	}
+}
+
+func parsePDF(filePath string) *PDF {
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println(err)
+	}
+	scanner := token.NewScanner(f)
+	parser := NewParser(scanner)
+	parser.Parse()
+	_ = f.Close()
+	return parser.PDF()
+}
+
+func approxMatch(left *PDF, right *PDF, leftResolved map[string]bool, rightResolved map[string]bool, bestMatches map[string]string, bestScores map[string]float64, opts *MatchOptions) int {
 	iteration := 0
 	statApprox := 0
 	for len(leftResolved) != len(left.Objects) || len(rightResolved) != len(right.Objects) {
@@ -54,7 +123,7 @@ func approxMatch(left *pdf2.PDF, right *pdf2.PDF, leftResolved map[string]bool, 
 				}
 
 				// Calculate match
-				score := pdf2.MatchTypes(o1, o2, opts)
+				score := MatchTypes(o1, o2, opts)
 				if score < 0.1 {
 					continue
 				}
@@ -100,11 +169,11 @@ func approxMatch(left *pdf2.PDF, right *pdf2.PDF, leftResolved map[string]bool, 
 
 func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 
-	pdf2.HideRandomKeys = true
-	pdf2.HideVariableData = true
-	pdf2.HideIdentifiers = true
-	pdf2.HideStreamLength = true
-	pdf2.TrimFontPrefix = true
+	HideRandomKeys = true
+	HideVariableData = true
+	HideIdentifiers = true
+	HideStreamLength = true
+	TrimFontPrefix = true
 
 	left := parsePDF(leftPath)
 	right := parsePDF(rightPath)
@@ -134,8 +203,8 @@ func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 			}
 
 			// Calculate match
-			opts := pdf2.MatchOptions{}
-			score := pdf2.MatchTypes(o1, o2, &opts)
+			opts := MatchOptions{}
+			score := MatchTypes(o1, o2, &opts)
 
 			// Lock perfect matches
 			if score == 1.0 {
@@ -152,7 +221,7 @@ func Compare(leftPath string, rightPath string, verbose bool) *Comparison {
 		fmt.Printf("exact matches:\t%d\n", matches)
 	}
 
-	opts := pdf2.MatchOptions{MatchDepth: true}
+	opts := MatchOptions{MatchDepth: true}
 	matches = approxMatch(left, right, leftResolved, rightResolved, bestMatches, bestMatchScores, &opts)
 	if matches > 0 && verbose {
 		fmt.Printf("close matches:\t%d\n", matches)
