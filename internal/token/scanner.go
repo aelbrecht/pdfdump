@@ -53,6 +53,10 @@ func NewScanner(r io.Reader) *Scanner {
 	}
 
 	version := string(header[:len(header)-1])
+	if !strings.HasPrefix(version, "PDF") {
+		log.Fatalln("invalid pdf header")
+	}
+
 	delimiter := header[len(header)-1]
 	scanner := bufio.NewScanner(r)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
