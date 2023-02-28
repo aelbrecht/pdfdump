@@ -3,11 +3,11 @@ package pdf
 import (
 	"bytes"
 	"fmt"
+	"github.com/aelbrecht/pdfdump/internal/token"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"log"
 	"math"
 	"os"
-	"pdfdump/internal/token"
 	"strings"
 )
 

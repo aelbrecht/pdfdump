@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/aelbrecht/pdfdump/external/pdf"
+	"github.com/aelbrecht/pdfdump/internal/token"
 	"log"
 	"os"
 	"path"
-	"pdfdump/external/pdf"
-	"pdfdump/internal/token"
 	"strings"
 )
 

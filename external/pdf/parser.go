@@ -2,9 +2,9 @@ package pdf
 
 import (
 	"fmt"
+	"github.com/aelbrecht/pdfdump/internal/token"
 	"log"
 	"os"
-	"pdfdump/internal/token"
 	"strconv"
 	"strings"
 )

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/aelbrecht/pdfdump/external/pdf"
+	"github.com/aelbrecht/pdfdump/internal/token"
 	"log"
 	"os"
-	"pdfdump/external/pdf"
-	"pdfdump/internal/token"
 )
 
 func main() {

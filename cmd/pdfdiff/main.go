@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/aelbrecht/pdfdump/external/pdf"
 	"log"
 	"os"
 	"path"
-	"pdfdump/external/pdf"
 	"strings"
 )
 
