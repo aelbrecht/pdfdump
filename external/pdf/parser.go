@@ -191,7 +191,7 @@ func (p *Parser) ParseString() (ObjectType, bool) {
 	for true {
 		t := p.scanner.Next()
 		buffer += t
-		if len(t) > 0 && (t == ")" || t[len(t)-1] == ')') {
+		if len(t) > 0 && (t == ")" || (t[len(t)-1] == ')' && (len(t) == 1 || t[len(t)-2] != '\\'))) {
 			return NewText(buffer), true
 		}
 	}
