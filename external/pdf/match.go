@@ -175,6 +175,14 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 		}
 		return 0.5
 	case *Stream:
+		if opts.MatchStream {
+			v1 := first.(*Stream)
+			v2 := second.(*Stream)
+			if len(v1.Value) != len(v2.Value) {
+				return 0
+			}
+			return 1.0
+		}
 		return 1.0
 	case *ObjectReference:
 		if opts.MatchReferences {
@@ -189,14 +197,6 @@ func MatchTypes(first ObjectType, second ObjectType, opts *MatchOptions) float64
 			return 1.0
 		}
 	case *Null:
-		if opts.MatchStream {
-			v1 := first.(*Stream)
-			v2 := second.(*Stream)
-			if len(v1.Value) != len(v2.Value) {
-				return 0
-			}
-			return 1.0
-		}
 		return 1.0
 	case *HexString:
 		return 1.0
