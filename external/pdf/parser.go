@@ -19,6 +19,7 @@ func NewParser(scanner *token.Scanner) *Parser {
 }
 
 func (p *Parser) Parse() {
+	hasTrailer := false
 	for p.scanner.HasToken() {
 
 		if p.scanner.Peek() == "" {
@@ -32,9 +33,17 @@ func (p *Parser) Parse() {
 		}
 
 		if p.ParseTrailer() {
+			hasTrailer = true
 			continue
 		}
 
+		// Try to complete the parsing even when the trailer contains unknown structures
+		if hasTrailer {
+			fmt.Print("# parsing incomplete!\n\n")
+			break
+		}
+
+		// When no trailer was found, we must have crashed mid-way the PDF
 		fmt.Println("unknown prefix")
 		p.scanner.Dump()
 		os.Exit(1)
